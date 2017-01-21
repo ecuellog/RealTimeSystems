@@ -2,15 +2,15 @@
 
 For phase 1, each team is required to connect all necessary components together in a single based station so that:
 
-    a joystick can control the movement of the two servo motors mounted inside a pan-and-tilt kid;
-    a joystick can fire the laser ON/OFF with a push-button;
-    a light-sensor can detect the presence or absence of a light source;
-    an LCD display which shows the state of the light sensor and joystick.
+* a joystick can control the movement of the two servo motors mounted inside a pan-and-tilt kid;
+* a joystick can fire the laser ON/OFF with a push-button;
+* a light-sensor can detect the presence or absence of a light source;
+* an LCD display which shows the state of the light sensor and joystick.
 
 First, construct a block diagram, including power supplies, of how all these components are connected to the ATMega2560 based-station. There may be two types of LCD display available:
 
-    a shield that sits on top of the ATMega2560;  or
-    an LCD that connects to the I2C bus.
+* a shield that sits on top of the ATMega2560;  or
+* an LCD that connects to the I2C bus.
 
 Choose whichever one that works for you.
 
