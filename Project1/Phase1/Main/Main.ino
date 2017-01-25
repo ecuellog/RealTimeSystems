@@ -16,25 +16,29 @@ int ambientLight = 0;
 void setup() {
   pinMode(laserPin, OUTPUT);
   ambientLight = analogRead(lightSensorPin);
-  currentLight = ambientLight
+  currentLight = ambientLight;
 }
 
 void loop() {
-
+  checkLight();
+  refreshLcd();
+  delay(100);
 }
 
 void checkLight() {
     // light goes up by 100
     currentLight = analogRead(lightSensorPin);
-    if (currentLight - ambientLight > 100) {
-      // TODO: action when light is shined on us
-    }
 }
 
 void refreshLcd() {
   lcd.clear();
-  lcd.print("light: ");
-  lcd.print(currentLight);
+  int lightDelta = currentLight - ambientLight;
+  if (lightDelta > 100) {
+    lcd.print("ON : ");
+  } else {
+    lcd.print("OFF: ");
+  }
+  lcd.print(lightDelta);
   lcd.setCursor(0, 1);
   lcd.print("x: ");
   lcd.print("jsX");
@@ -42,10 +46,10 @@ void refreshLcd() {
   lcd.print("jsY");
 }
 
-// TODO: rewrite to use timer/interrupt
 void shoot() {
   digitalWrite (laserPin, HIGH);
-  delay (1000);
-  digitalWrite (laserPin, LOW);
+}
+void unshoot() {
+  digitalWrite(laserPin, LOW);
 }
 
