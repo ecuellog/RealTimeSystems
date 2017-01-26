@@ -1,0 +1,8 @@
+light sensor goes into A7
+light sensor resistor is 1K
+laser is from D53 directly
+
+joystick x/y are A8/A9
+switch is D38
+
+servo signals are D50 D52
