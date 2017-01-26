@@ -10,9 +10,10 @@ void setup ()
 {
   pinMode (JoyStick_X, INPUT);
   pinMode (JoyStick_Y, INPUT);
-  //servoX.attach(52);
- // curAngleX = 90;
- // servoX.write(curAngleX);
+  servoX.attach(52);
+  curAngleX = servoX.read();
+  //curAngleX = 90;
+  servoX.write(curAngleX);
   Serial.begin (9600); // 9600 bps
 }
 
@@ -24,19 +25,28 @@ void loop ()
 
   angleRateX = (x-513)/103; //for a maximum of 5 degrees for full joystick input
 
- /* if( curAngleX > 20 or curAngleX < 160){
+  if( curAngleX < 20 ){
+    curAngleX = curAngleX + 5;  
+  }
+  else if(curAngleX > 160){
+    curAngleX = curAngleX - 5;  
+  }
+  else{
     curAngleX = curAngleX + angleRateX;
-    servoX.write(curAngleX + angleRateX);
-  }*/
+  }
+
+  servoX.write(curAngleX);
 
 
   //Serial.print ("x value - "); // 0 - 445 - 904
   //Serial.print (x);
+  Serial.print("    - angleRate = ");
   Serial.print(angleRateX);
-  Serial.print(" -  ");
+  Serial.print(" - curValue= ");
+  Serial.print(curAngleX);
   //Serial.print ("y value - "); //0 - 452 - 904 
   //Serial.print (y, DEC);
  // Serial.print (",");
  // Serial.println (z, DEC);
-  delay (1000);
+  delay (25);
 }
