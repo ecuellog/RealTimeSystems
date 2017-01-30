@@ -50,7 +50,7 @@ void setup() {
   Scheduler_StartTask(10, 500, refreshLcd);
   Scheduler_StartTask(17, 100, checkLight);
   Scheduler_StartTask(0, 25, servoMove);
-  Scheduler_StartTask(6, 50, buttonLaser);
+  Scheduler_StartTask(6, 1000, buttonLaser);
 }
 
 void loop() {
@@ -113,7 +113,8 @@ void refreshLcd() {
 }
 
 void buttonLaser() {
+  uint8_t buttonVal = digitalRead(zbutton);
   Serial1.write(laserCmd);
-  Serial1.write(digitalRead(zbutton));
+  Serial1.write(buttonVal);
 }
 
