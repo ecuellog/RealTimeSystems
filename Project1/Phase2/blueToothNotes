@@ -1,0 +1,6 @@
+current angle x 0 [1 byte that has angle value]
+current angle y 1 [1 byte that has angle value]
+laser (on/off) 2 [1 byte 0/1 for low/high]
+
+roomba move x 3 [???]
+roomba move y 4 [???]
