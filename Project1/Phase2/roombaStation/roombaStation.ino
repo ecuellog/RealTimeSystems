@@ -2,11 +2,9 @@
 
 Servo servoX;
 Servo servoY;
-int command;
-int comInfo;
 int curAngleX;
 int curAngleY;
-int laserPin = 53;
+int laserPin = 51;
 int servoXpin = 52;
 int servoYpin = 50;
 
@@ -19,29 +17,50 @@ void setup() {
 }
 
 void loop() {
-  //get command from base station
-  command = Serial1.read();
+  checkBT();
+  
+}
 
+void checkBT() {
+  //get command from base station
+  uint8_t command = -1;
+  
+  if(Serial1.available()){
+    command = Serial1.read();
+  } else {
+    return;
+  }
+
+  delay(5);
   switch(command){
     case 0:
-      curAngleX = Serial1.read();
-      Serial.print(curAngleX); //for testing purposes to protect servo motor
-      delay(500);
-      //servoX.write(curAngleX);
+      if(Serial1.available()){
+        curAngleX = Serial1.read();
+        Serial.print("servox");
+        Serial.println(curAngleX); //for testing purposes to protect servo motor
+        servoX.write(curAngleX);
+      }
       break;
     case 1:  
-      curAngleY = Serial1.read();
-      Serial.print(curAngleY); //for testing purposes to protect servo motor
-      delay(500);
-      //servoY.write(curAngleY);
+      if(Serial1.available()){
+        curAngleY = Serial1.read();
+        Serial.print("servoy");
+        Serial.println(curAngleY); //for testing purposes to protect servo motor
+        servoY.write(curAngleY);
+      }
       break;
     case 2:
-      comInfo = Serial1.read();
-      if(comInfo){
-        digitalWrite(laserPin, LOW);
-      } else {
-        digitalWrite(laserPin, HIGH);
+    
+      if(Serial1.available()){
+        uint8_t comInfo = Serial1.read();
+        Serial.println("laser");
+        if(comInfo){
+          digitalWrite(laserPin, LOW);
+        } else {
+          digitalWrite(laserPin, HIGH);
+        }
       }
+     
       break;
   }
   
