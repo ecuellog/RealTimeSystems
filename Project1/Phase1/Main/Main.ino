@@ -1,6 +1,6 @@
 /*
  * Project 1 Phase 1
- * Authors: Konrad Schultz, Edguardo Cuello
+ * Authors: Konrad Schultz, Edgardo Cuello
  */
 #include <LiquidCrystal.h>
 #include <Servo.h>
