@@ -1,67 +1,74 @@
+/*
+ * Project 1 Phase 2
+ * Authors: Konrad Schultz, Edguardo Cuello
+ */
+
 #include <Servo.h>
+
+#include "scheduler.h"
 
 Servo servoX;
 Servo servoY;
-int curAngleX;
-int curAngleY;
-int laserPin = 51;
-int servoXpin = 52;
-int servoYpin = 50;
+
+// Pins
+uint8_t laserPin = 51;
+uint8_t servoXPin = 52;
+uint8_t servoYPin = 50;
 
 void setup() {
   pinMode(laserPin, OUTPUT);
-  servoX.attach(servoXpin);
-  servoY.attach(servoYpin);
+  servoX.attach(servoXPin);
+  servoY.attach(servoYPin);
+  
+  // Bluetooth
   Serial1.begin(9600);
-  Serial.begin(9600);
+
+  // Scheduler
+  Scheduler_Init();
+  Scheduler_StartTask(10, 0, checkBluetooth);
 }
 
 void loop() {
-  checkBT();
-  
+  Scheduler_Dispatch();
 }
 
-void checkBT() {
-  //get command from base station
+void checkBluetooth() {
   uint8_t command = -1;
   
-  if(Serial1.available()){
+  if(Serial1.available()) {
     command = Serial1.read();
   } else {
     return;
   }
 
-  delay(5);
-  switch(command){
+  switch(command) {
+    // servoX
     case 0:
-      if(Serial1.available()){
-        curAngleX = Serial1.read();
-        Serial.print("servox");
-        Serial.println(curAngleX); //for testing purposes to protect servo motor
+      if(Serial1.available()) {
+        uint8_t curAngleX = Serial1.read();
         servoX.write(curAngleX);
       }
       break;
+   
+    // servoY
     case 1:  
-      if(Serial1.available()){
-        curAngleY = Serial1.read();
-        Serial.print("servoy");
-        Serial.println(curAngleY); //for testing purposes to protect servo motor
+      if(Serial1.available()) {
+        uint8_t curAngleY = Serial1.read();
         servoY.write(curAngleY);
       }
       break;
-    case 2:
     
-      if(Serial1.available()){
+    // laser
+    case 2:
+      if(Serial1.available()) {
         uint8_t comInfo = Serial1.read();
-        Serial.println("laser");
         if(comInfo){
           digitalWrite(laserPin, LOW);
         } else {
           digitalWrite(laserPin, HIGH);
         }
       }
-     
       break;
   }
-  
 }
+

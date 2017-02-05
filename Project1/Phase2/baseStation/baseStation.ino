@@ -3,7 +3,6 @@
  * Authors: Konrad Schultz, Edguardo Cuello
  */
 #include <LiquidCrystal.h>
-#include <Servo.h>
 
 #include "scheduler.h"
 
@@ -32,16 +31,16 @@ uint8_t angleYCmd = 1;
 uint8_t laserCmd = 2;
 
 void setup() {
-  // light sensor
+  // Light sensor
   ambientLight = analogRead(lightSensorPin);
   currentLight = ambientLight;
   
   lcd.begin(16,2);
 
-  Serial.begin(9600);
+  // BlueTooth
   Serial1.begin(9600);
   
-  //Joystick
+  // Joystick
   pinMode(servoJsX, INPUT);
   pinMode(servoJsY, INPUT);
   pinMode(zbutton, INPUT);
