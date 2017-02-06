@@ -1,0 +1,10 @@
+Roomba Notes:
+ - Every time you pick up the Roomba you must hit the reset button on the Arduino. (Ask lab instructor why this happens).
+ - Wiring:
+ 
+ 	Orange (rightmost): Ground.
+ 	Yellow (after ground) : Goes into transmit port in Arduino.
+ 	Green (beside Blue) : Goes into receive port in Arduino.
+ 	Blue (leftmost): Goes into digital port in Arduino.
+ 	
+ 
