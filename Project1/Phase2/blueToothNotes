@@ -2,4 +2,11 @@ current angle x 0 [1 byte that has angle value]
 current angle y 1 [1 byte that has angle value]
 laser (on/off) 2 [1 byte 0/1 for low/high]
 
-roomba move 3 [???]
+roomba commands:
+forward f (102)
+backward b (98)
+right r (114)
+left l (108)
+stop s (115)
+dock d (100)
+shutdown p (112)

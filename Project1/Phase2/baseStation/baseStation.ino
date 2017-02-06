@@ -29,8 +29,11 @@ int angleRateY;
 uint8_t angleXCmd = 0;
 uint8_t angleYCmd = 1;
 uint8_t laserCmd = 2;
+uint8_t roombaCmd = 3;
 
 void setup() {
+  Serial.begin(9600);
+  
   // Light sensor
   ambientLight = analogRead(lightSensorPin);
   currentLight = ambientLight;
@@ -51,15 +54,36 @@ void setup() {
   
   // Scheduler
   Scheduler_Init();
-  Scheduler_StartTask(20, 500, refreshLcd);
-  Scheduler_StartTask(3, 100, checkLight);
-  Scheduler_StartTask(0, 25, servoMoveX);
-  Scheduler_StartTask(13, 25, servoMoveY);
-  Scheduler_StartTask(9, 100, buttonLaser);
+  Scheduler_StartTask(6, 1000, roombaMove);
+//  Scheduler_StartTask(20, 500, refreshLcd);
+//  Scheduler_StartTask(3, 100, checkLight);
+//  Scheduler_StartTask(0, 25, servoMoveX);
+//  Scheduler_StartTask(13, 25, servoMoveY);
+//  Scheduler_StartTask(9, 100, buttonLaser);
 }
 
 void loop() {
    Scheduler_Dispatch();
+}
+
+// speed from -150 to 150
+// turning radius from -32768 to 32768
+void roombaMove() {
+  int v = analogRead(roombaJsY);
+  int r = analogRead(roombaJsX);
+
+  Serial.println(roombaCmd);
+  Serial.println(v / 256);
+  Serial.println(v % 256);
+  Serial.println(r / 256);
+  Serial.println(r % 256);
+  Serial.println();
+  
+  Serial1.write(roombaCmd);
+  Serial1.write(v / 256);
+  Serial1.write(v % 256);
+  Serial1.write(r / 256);
+  Serial1.write(r % 256);
 }
 
 void servoMoveY() {
