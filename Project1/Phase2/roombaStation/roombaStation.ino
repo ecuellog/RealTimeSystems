@@ -30,7 +30,7 @@ void setup() {
 
   // Scheduler
   Scheduler_Init();
-  Scheduler_StartTask(0, 10, checkBluetooth);
+  Scheduler_StartTask(0, 25, checkBluetooth);
 }
 
 bool initialized = true;
@@ -39,67 +39,64 @@ void loop() {
   Scheduler_Dispatch();
 }
 
+void clearSerial(uint8_t count) {
+  for(int i = 0; i < count; i++) {
+    Serial1.read();
+  }
+}
+
 void checkBluetooth() {
-  uint8_t command = -1;
-  
-  if(Serial1.available()) {
-    command = Serial1.read();
-  } else {
+  if(Serial1.available() < 5) {
     return;
   }
+
+  uint8_t command = Serial1.read();
   
   if(!initialized) {
       r.init();
       initialized = true;
   }
 
+  uint8_t curAngle, comInfo;
   switch(command) {
     // servoX
     case 0:
-      if(Serial1.available()) {
-        uint8_t curAngleX = Serial1.read();
-        servoX.write(curAngleX);
-      }
+      curAngle = Serial1.read();
+      clearSerial(3);
+      servoX.write(curAngle);
       break;
    
     // servoY
     case 1:  
-      if(Serial1.available()) {
-        uint8_t curAngleY = Serial1.read();
-        servoY.write(curAngleY);
-      }
+        curAngle = Serial1.read();
+        clearSerial(3);
+        servoY.write(curAngle);
       break;
     
     // laser
     case 2:
-      if(Serial1.available()) {
-        uint8_t comInfo = Serial1.read();
-        if(comInfo){
-          digitalWrite(laserPin, LOW);
-        } else {
-          digitalWrite(laserPin, HIGH);
-        }
+      comInfo = Serial1.read();
+      if(comInfo){
+        digitalWrite(laserPin, LOW);
+      } else {
+        digitalWrite(laserPin, HIGH);
       }
+      clearSerial(3);
       break;
-     //Roomba movements
+    
+    //Roomba movements
     case 3:
-      Serial.println("In case 3");
-      delay(5);
-      //if(Serial1.available()){
-        int8_t speedHigh = Serial1.read();
-        delay(5);
-        int8_t speedLow = Serial1.read();
-        delay(5);
-        int8_t radHigh = Serial1.read();
-        delay(5);
-        int8_t radLow = Serial1.read();
+      int8_t speedHigh = Serial1.read();
+      int8_t speedLow = Serial1.read();
+      int8_t radHigh = Serial1.read();
+      int8_t radLow = Serial1.read();
 
-        int actSpeed = speedHigh*256 + speedLow;
-        int actRad = radHigh*256 + radLow;
+      int actSpeed = speedHigh*256 + speedLow;
+      int actRad = radHigh*256 + radLow;
 
-        Serial.println(actSpeed);
-        Serial.println(actRad);
-     // }
+      Serial.println(actSpeed);
+      Serial.println(actRad);
+      break;
      
     /* case 'f': 
         r.drive(150, 32768);

@@ -66,18 +66,17 @@ void loop() {
    Scheduler_Dispatch();
 }
 
+void padSerial(uint8_t count) {
+  for(int i = 0; i < count; i++) {
+    Serial1.write(0);
+  }
+}
+
 // speed from -150 to 150
 // turning radius from -32768 to 32768
 void roombaMove() {
   int v = analogRead(roombaJsY);
   int r = analogRead(roombaJsX);
-
-  Serial.println(roombaCmd);
-  Serial.println(v / 256);
-  Serial.println(v % 256);
-  Serial.println(r / 256);
-  Serial.println(r % 256);
-  Serial.println();
   
   Serial1.write(roombaCmd);
   Serial1.write(v / 256);
@@ -101,6 +100,7 @@ void servoMoveY() {
 
   Serial1.write(angleYCmd);
   Serial1.write(curAngleY);
+  padSerial(3);
 }
 void servoMoveX() {
   int x = analogRead(servoJsX);
@@ -119,6 +119,7 @@ void servoMoveX() {
 
   Serial1.write(angleXCmd);
   Serial1.write(curAngleX);
+  padSerial(3);
 }
 
 void checkLight() {
@@ -143,10 +144,9 @@ void refreshLcd() {
 
 void buttonLaser() {
   uint8_t buttonVal = digitalRead(zbutton);
-
-  Serial.println(buttonVal);
   
   Serial1.write(laserCmd);
   Serial1.write(buttonVal);
+  padSerial(3);
 }
 
