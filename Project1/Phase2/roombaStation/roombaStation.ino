@@ -75,7 +75,7 @@ void checkBluetooth() {
     
     // laser
     case 2:
-      comInfo = Serial1.read();
+      uint8_t comInfo = Serial1.read();
       if(comInfo){
         digitalWrite(laserPin, LOW);
       } else {
