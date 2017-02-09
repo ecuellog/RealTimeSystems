@@ -1,0 +1,16 @@
+body {
+  background-color: lightgrey;
+}
+
+h3 {
+  text-decoration: underline;
+}
+
+.table-contents {
+  padding: 5px;
+}
+
+.table-contents a {
+  display: block;
+  padding-left: 10px;
+}
