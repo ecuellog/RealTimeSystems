@@ -14,23 +14,22 @@ Servo servoY;
 uint8_t laserPin = 51;
 uint8_t servoXPin = 52;
 uint8_t servoYPin = 50;
-Roomba r(2,30);
+Roomba r(3,53);
 
 void setup() {
   pinMode(laserPin, OUTPUT);
   servoX.attach(servoXPin);
   servoY.attach(servoYPin);
   
-  // Roomba
-  r.init();
-  
   // Bluetooth
   Serial1.begin(9600);
-  Serial.begin(9600);
 
   // Scheduler
   Scheduler_Init();
-  Scheduler_StartTask(0, 25, checkBluetooth);
+  Scheduler_StartTask(0, 5, checkBluetooth);
+
+  // Roomba
+  r.init();
 }
 
 bool initialized = true;
@@ -44,6 +43,8 @@ void clearSerial(uint8_t count) {
     Serial1.read();
   }
 }
+
+
 
 void checkBluetooth() {
   if(Serial1.available() < 5) {
@@ -76,12 +77,12 @@ void checkBluetooth() {
     // laser
     case 2:
       comInfo = Serial1.read();
+      clearSerial(3);
       if(comInfo){
         digitalWrite(laserPin, LOW);
       } else {
         digitalWrite(laserPin, HIGH);
       }
-      clearSerial(3);
       break;
     
     //Roomba movements
@@ -94,63 +95,41 @@ void checkBluetooth() {
       int speedSig = speedHigh*256 + speedLow;  //Value from 0 - 1024
       int radSig = radHigh*256 + radLow;  //Value from 0 - 1024
 
-     // Serial.println(speedHigh);
-     // Serial.println(speedLow);
-
+      speedSig = -(speedSig - 512);
+      radSig = radSig;
+    
       int actRad;
-      int actSpeed = (speedSig - 512) / 3;
+      int actSpeed = speedSig / 2;
 
-      radSig = radSig - 512;
-
-      if(radSig < 0){
-        actRad = radSig*64 + 32768;  
+      if(radSig > 900) {
+        actRad = -1;
+        actSpeed = 50;
+      } else if(radSig > 800) {
+        actRad = -200;
+      } else if(radSig > 700) {
+        actRad = -400;
+      } else if(radSig > 600) {
+        actRad = -750;
+      } else if(radSig > 530) {
+        actRad = -1500;
+      } else if(radSig > 490) {
+        actRad = 32767;
+      } else if(radSig > 400) {
+        actRad = 1500;
+      } else if(radSig > 300) {
+        actRad = 750;
+      } else if(radSig > 200) {
+        actRad = 400;
+      } else if(radSig > 100){
+        actRad = 200;
       } else {
-        actRad = radSig*64 - 32768;  
+        actRad = 1;
+        actSpeed = 50;
       }
 
-      actSpeed = abs(actSpeed) < 10 ? 0 : actSpeed;
-
-      actSpeed = abs(actRad) < 400 ? 50 : actSpeed;
-
       r.drive(actSpeed, actRad);
-
-      /*Serial.print("Speedsig - 512 * 200 =  ");
-      Serial.println((speedSig - 512)*200);
-
-      Serial.print("actSpeed=  ");
-      Serial.println(actSpeed);
-      Serial.print("actRad =  ");
-      Serial.println(actRad);*/
       
       break;
-     
-    /* case 'f': 
-        r.drive(150, 32768);
-        Serial.println("FORWARD");
-        break;
-      case 'b':
-        r.drive(-150, 32768);
-        Serial.println("BACK");
-        break;
-      case 'r':
-        r.drive(50, -1);
-        break;
-      case 'l':
-        r.drive(50, 1);
-        break;
-      case 's':
-        r.drive(0,0);
-       // Serial.println("STOP");
-        break;
-      case 'd':
-        r.dock();
-        break;
-      case 'p':
-        r.power_off();
-        initialized = false;
-        break;*/
-
-      
   }
 }
 

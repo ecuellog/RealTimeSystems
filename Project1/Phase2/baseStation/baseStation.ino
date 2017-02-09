@@ -54,12 +54,12 @@ void setup() {
   
   // Scheduler
   Scheduler_Init();
-  Scheduler_StartTask(6, 1000, roombaMove);
-//  Scheduler_StartTask(20, 500, refreshLcd);
-//  Scheduler_StartTask(3, 100, checkLight);
-//  Scheduler_StartTask(0, 25, servoMoveX);
-//  Scheduler_StartTask(13, 25, servoMoveY);
-//  Scheduler_StartTask(9, 100, buttonLaser);
+  Scheduler_StartTask(15, 100, roombaMove);
+  Scheduler_StartTask(20, 500, refreshLcd);
+  Scheduler_StartTask(25, 100, checkLight);
+  Scheduler_StartTask(0, 35, servoMoveX);
+  Scheduler_StartTask(5, 35, servoMoveY);
+  Scheduler_StartTask(10, 150, buttonLaser);
 }
 
 void loop() {
@@ -86,10 +86,6 @@ void roombaMove() {
   Serial1.write(vLow);
   Serial1.write(r / 256);
   Serial1.write(r % 256);
-
-  Serial.println(vHigh);
-  Serial.println(vLow);
-  Serial.println(vHigh * 256 + vLow);
 }
 
 void servoMoveY() {
@@ -151,7 +147,6 @@ void refreshLcd() {
 
 void buttonLaser() {
   uint8_t buttonVal = digitalRead(zbutton);
-  
   Serial1.write(laserCmd);
   Serial1.write(buttonVal);
   padSerial(3);

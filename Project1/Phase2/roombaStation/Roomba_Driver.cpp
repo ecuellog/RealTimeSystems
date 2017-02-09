@@ -98,7 +98,6 @@ void Roomba::init()
 }
 
 void Roomba::drive(int velocity, int radius) {
-  Serial1.println("Drive");
   write_serial(DRIVE);
   write_serial(HIGH_BYTE(velocity));
   write_serial(LOW_BYTE(velocity));
@@ -176,6 +175,7 @@ void Roomba::write_serial(char val) {
 	  Serial1.write(val);
 	  break;
 	case 2:
+    Serial.println((uint8_t)val);
 	  Serial2.write(val);
 	  break;
 	case 3:
