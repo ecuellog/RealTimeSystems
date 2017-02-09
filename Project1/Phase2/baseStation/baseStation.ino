@@ -77,12 +77,19 @@ void padSerial(uint8_t count) {
 void roombaMove() {
   int v = analogRead(roombaJsY);
   int r = analogRead(roombaJsX);
+
+  uint8_t vHigh = v / 256;
+  uint8_t vLow = v % 256;
   
   Serial1.write(roombaCmd);
-  Serial1.write(v / 256);
-  Serial1.write(v % 256);
+  Serial1.write(vHigh);
+  Serial1.write(vLow);
   Serial1.write(r / 256);
   Serial1.write(r % 256);
+
+  Serial.println(vHigh);
+  Serial.println(vLow);
+  Serial.println(vHigh * 256 + vLow);
 }
 
 void servoMoveY() {
