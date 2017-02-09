@@ -75,7 +75,7 @@ void checkBluetooth() {
     
     // laser
     case 2:
-      uint8_t comInfo = Serial1.read();
+      comInfo = Serial1.read();
       if(comInfo){
         digitalWrite(laserPin, LOW);
       } else {
@@ -86,16 +86,42 @@ void checkBluetooth() {
     
     //Roomba movements
     case 3:
-      int8_t speedHigh = Serial1.read();
-      int8_t speedLow = Serial1.read();
-      int8_t radHigh = Serial1.read();
-      int8_t radLow = Serial1.read();
+      uint8_t speedHigh = Serial1.read();
+      uint8_t speedLow = Serial1.read();
+      uint8_t radHigh = Serial1.read();
+      uint8_t radLow = Serial1.read();
 
-      int actSpeed = speedHigh*256 + speedLow;
-      int actRad = radHigh*256 + radLow;
+      int speedSig = speedHigh*256 + speedLow;  //Value from 0 - 1024
+      int radSig = radHigh*256 + radLow;  //Value from 0 - 1024
 
+     // Serial.println(speedHigh);
+     // Serial.println(speedLow);
+
+      int actRad;
+      int actSpeed = (speedSig - 512) / 3;
+
+      radSig = radSig - 512;
+
+      if(radSig < 0){
+        actRad = radSig*64 + 32768;  
+      } else {
+        actRad = radSig*64 - 32768;  
+      }
+
+      actSpeed = abs(actSpeed) < 10 ? 0 : actSpeed;
+
+      actSpeed = abs(actRad) < 400 ? 50 : actSpeed;
+
+      r.drive(actSpeed, actRad);
+
+      /*Serial.print("Speedsig - 512 * 200 =  ");
+      Serial.println((speedSig - 512)*200);
+
+      Serial.print("actSpeed=  ");
       Serial.println(actSpeed);
-      Serial.println(actRad);
+      Serial.print("actRad =  ");
+      Serial.println(actRad);*/
+      
       break;
      
     /* case 'f': 
