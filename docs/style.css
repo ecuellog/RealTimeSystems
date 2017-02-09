@@ -1,9 +1,21 @@
+@font-face {
+    font-family: raleway;
+    src: url(raleway_regular.ttf);
+}
+
 body {
   background-color: lightgrey;
+  margin: 0 5%;
+  font-family: raleway;
 }
 
 h3 {
   text-decoration: underline;
+}
+
+h1, h2, .author {
+  text-align: center;
+  font-family: raleway;
 }
 
 .table-contents {
