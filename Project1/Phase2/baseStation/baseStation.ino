@@ -51,15 +51,22 @@ void setup() {
   curAngleY = 90;
   pinMode(roombaJsX, INPUT);
   pinMode(roombaJsY, INPUT);
+
+  pinMode(22, OUTPUT); // roombaMove
+  pinMode(24, OUTPUT); // servoY
+  pinMode(26, OUTPUT); // servoX
+  pinMode(30, OUTPUT); // LCD
+  pinMode(28, OUTPUT); // lightSensor
+  pinMode(32, OUTPUT); // laserbutton
   
   // Scheduler
   Scheduler_Init();
   Scheduler_StartTask(15, 100, roombaMove);
   Scheduler_StartTask(20, 500, refreshLcd);
   Scheduler_StartTask(25, 100, checkLight);
-  Scheduler_StartTask(0, 35, servoMoveX);
-  Scheduler_StartTask(5, 35, servoMoveY);
-  Scheduler_StartTask(10, 150, buttonLaser);
+  Scheduler_StartTask(0, 50, servoMoveX);
+  Scheduler_StartTask(5, 50, servoMoveY);
+  Scheduler_StartTask(10, 125, buttonLaser);
 }
 
 void loop() {
@@ -75,6 +82,7 @@ void padSerial(uint8_t count) {
 // speed from -150 to 150
 // turning radius from -32768 to 32768
 void roombaMove() {
+  digitalWrite(22, HIGH);
   int v = analogRead(roombaJsY);
   int r = analogRead(roombaJsX);
 
@@ -86,50 +94,56 @@ void roombaMove() {
   Serial1.write(vLow);
   Serial1.write(r / 256);
   Serial1.write(r % 256);
+  digitalWrite(22, LOW);
 }
 
 void servoMoveY() {
+  digitalWrite(24, HIGH);
   int y = analogRead(servoJsY);
   
-  angleRateY = (y-513)/103;
+  angleRateY = (y - 513) / 103;
   
-  if( curAngleY < 20 ){
+  if( curAngleY < 10 ) {
     curAngleY = curAngleY + 5;  
-  } else if(curAngleY > 160){
+  } else if(curAngleY > 170) {
     curAngleY = curAngleY - 5;  
-  } else{
+  } else {
     curAngleY = curAngleY + angleRateY;
   }
 
   Serial1.write(angleYCmd);
   Serial1.write(curAngleY);
   padSerial(3);
+  digitalWrite(24, LOW);
 }
 void servoMoveX() {
+  digitalWrite(26, HIGH);
   int x = analogRead(servoJsX);
   
-  angleRateX = (x-513)/103; //for a maximum of 5 degrees for full joystick input
+  angleRateX = -(x - 512) / 103; //for a maximum of 5 degrees for full joystick input
 
-  if( curAngleX < 20 ){
+  if( curAngleX < 20 ) {
     curAngleX = curAngleX + 5;  
-  }
-  else if(curAngleX > 160){
+  } else if(curAngleX > 160) {
     curAngleX = curAngleX - 5;  
-  }
-  else{
+  } else {
     curAngleX = curAngleX + angleRateX;
   }
 
   Serial1.write(angleXCmd);
   Serial1.write(curAngleX);
   padSerial(3);
+  digitalWrite(26, LOW);
 }
 
 void checkLight() {
-    currentLight = analogRead(lightSensorPin);
+  digitalWrite(28, HIGH);
+  currentLight = analogRead(lightSensorPin);
+  digitalWrite(28, LOW);
 }
 
 void refreshLcd() {
+  digitalWrite(30, HIGH);
   lcd.clear();
   int lightDelta = currentLight - ambientLight;
   if (lightDelta > 100) {
@@ -143,12 +157,15 @@ void refreshLcd() {
   lcd.print(curAngleX);
   lcd.print(" y: ");
   lcd.print(curAngleY);
+  digitalWrite(30, LOW);
 }
 
 void buttonLaser() {
+  digitalWrite(32, HIGH);
   uint8_t buttonVal = digitalRead(zbutton);
   Serial1.write(laserCmd);
   Serial1.write(buttonVal);
   padSerial(3);
+  digitalWrite(32, LOW);
 }
 
