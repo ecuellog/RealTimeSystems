@@ -1,5 +1,6 @@
 #include <avr/interrupt.h>
 #include <string.h>
+#include <stdlib.h>
 #include "rtosTest.h"
 #include "os.h"
 
@@ -41,6 +42,7 @@ typedef struct ProcessDescriptor {
   PROCESS_STATE state;
   voidfuncptr  code;  /* function to be executed as a task */
   KERNEL_REQUEST_TYPE request;
+  int arg;
 } PD;
 
 /* This table contains ALL process descriptors. It doesn't matter what */
@@ -52,7 +54,7 @@ volatile PD* CurrentPD;
  * Since this is a "full-served" model, the kernel is executing using its own
  * stack. We can allocate a new workspace for this kernel stack, or we can
  * use the stack of the "main()" function, i.e., the initial C runtime stack.
- */         
+ */
 volatile unsigned char *KernelSp;
 
 unsigned char *CurrentSp;
@@ -76,7 +78,7 @@ volatile static unsigned int Tasks;
  * can just restore its execution context on its stack.
  * (See file "cswitch.S" for details.)
  */
-void Kernel_Create_Task_At( PD *p, voidfuncptr f ) {
+void Kernel_Create_Task_At(PD *p, voidfuncptr f, int arg) {
   unsigned char *sp = (unsigned char *) &(p->workSpace[WORKSPACESIZE-1]);
 
   /* Clear the contents of the workspace */
@@ -106,9 +108,10 @@ void Kernel_Create_Task_At( PD *p, voidfuncptr f ) {
   p->code = f;   /* function to be executed as a task */
   p->request = NONE;
   p->state = READY;
+  p->arg = arg;
 }
 
-static void Kernel_Create_Task( voidfuncptr f ) {
+static void Kernel_Create_Task(voidfuncptr f, int arg) {
   int x;
 
   if (Tasks == MAXTHREADCOUNT) return;
@@ -119,7 +122,7 @@ static void Kernel_Create_Task( voidfuncptr f ) {
   }
 
   ++Tasks;
-  Kernel_Create_Task_At( &(Process[x]), f );
+  Kernel_Create_Task_At(&(Process[x]), f, arg);
 }
 
 extern "C" void Dispatch() {
@@ -165,7 +168,7 @@ static void Next_Kernel_Request() {
 
     switch(CurrentPD->request) {
       case CREATE:
-        Kernel_Create_Task( CurrentPD->code );
+        Kernel_Create_Task(CurrentPD->code, CurrentPD->arg);
         break;
       case NEXT:
       case NONE:
@@ -213,7 +216,7 @@ void OS_Start() {
  */
 
 void OS_Abort(unsigned int error) {
-  /* do something */
+  exit(error);
 }
 
 PID Task_Create_System(voidfuncptr f, int arg) {
@@ -225,10 +228,11 @@ PID Task_Create_RR(voidfuncptr f, int arg) {
     Disable_Interrupt();
     CurrentPD->request = CREATE;
     CurrentPD->code = f;
+    CurrentPD->arg = arg;
     Enter_Kernel();
   } else { 
     /* call the RTOS function directly */
-    Kernel_Create_Task( f );
+    Kernel_Create_Task(f, arg);
   }
   return 0;
 }
@@ -251,7 +255,7 @@ void Task_Next() {
 }
 
 int Task_GetArg(void) {
-  return 0;
+  return CurrentPD->arg;
 }
 
 CHAN Chan_Init() {
@@ -290,7 +294,9 @@ void Ping() {
   int  x;
   init_LED();
   for(;;) {
-    enable_LED();
+    if (Task_GetArg() == 1) {
+      enable_LED();
+    }
   }
 }
 
@@ -298,7 +304,9 @@ void Pong() {
   int  x;
   init_LED();
   for(;;) {
-    disable_LED();
+    if (Task_GetArg() == 2) {
+      disable_LED();
+    }
   }
 }
 
@@ -309,7 +317,7 @@ void setup() {
   TCNT1  = 0;
 
   /* compare match register 16MHz/256/2Hz */
-  OCR1A = 625;
+  OCR1A = 6250;
   /* CTC mode */
   TCCR1B |= (1 << WGM12);
   /* 256 prescaler */
@@ -329,8 +337,8 @@ void loop() {
 int main() {
   setup();
   OS_Init();
-  Task_Create_RR(Ping, 0);
-  Task_Create_RR(Pong, 0);
+  Task_Create_RR(Ping, 1);
+  Task_Create_RR(Pong, 2);
   OS_Start();
 }
 
