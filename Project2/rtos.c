@@ -157,7 +157,6 @@ static void Next_Kernel_Request() {
 
     /* activate this newly selected task */
     CurrentSp = CurrentPD->sp;
-    kernel_OFF();
     task_ON(CurrentProcessIndex);
     Exit_Kernel();
 
@@ -205,6 +204,7 @@ void OS_Init() {
 void OS_Start() {   
   if ( (! KernelActive) && (Tasks > 0)) {
     Disable_Interrupt();
+    interrupt_disable_ON();
     KernelActive = 1;
     Next_Kernel_Request();
   }
@@ -226,6 +226,7 @@ PID Task_Create_System(voidfuncptr f, int arg) {
 PID Task_Create_RR(voidfuncptr f, int arg) {
   if (KernelActive) {
     Disable_Interrupt();
+    interrupt_disable_ON();
     CurrentPD->request = CREATE;
     CurrentPD->code = f;
     CurrentPD->arg = arg;
@@ -247,8 +248,8 @@ PID Task_Create_Period(voidfuncptr f, int arg, TICK period, TICK wcet, TICK offs
 void Task_Next() {
   if (KernelActive) {
     task_OFF(CurrentProcessIndex);
-    kernel_ON();
     Disable_Interrupt();
+    interrupt_disable_ON();
     CurrentPD->request = NEXT;
     Enter_Kernel();
   }
@@ -281,6 +282,7 @@ unsigned int Now() {
 void Task_Terminate() {
   if (KernelActive) {
     Disable_Interrupt();
+    interrupt_disable_ON();
     CurrentPD->request = TERMINATE;
     Enter_Kernel();
     /* never returns here! */
