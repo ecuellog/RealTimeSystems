@@ -35,14 +35,6 @@ typedef void (*voidfuncptr) (void);
  */
 
 /**
- * This internal kernel function is the context switching mechanism.
- * Fundamentally, the CSwitch() function saves the current task CurrentP's
- * context, selects a new running task, and then restores the new CurrentP's
- * context.
- * (See file "switch.S" for details.)
- */
-extern void CSwitch();
-/**
   * Exit_kernel() is used when OS_Start() or Task_Terminate() needs to 
   * switch to a new running task.
   */
@@ -103,8 +95,7 @@ volatile PD* CurrentP;
  * stack. We can allocate a new workspace for this kernel stack, or we can
  * use the stack of the "main()" function, i.e., the initial C runtime stack.
  * (Note: This and the following stack pointers are used primarily by the
- *   context switching code, i.e., CSwitch(), which is written in assembly
- *   language.)
+ *   context switching code)
  */         
 volatile unsigned char *KernelSp;
 
@@ -232,7 +223,6 @@ static void Next_Kernel_Request() {
 
     /* activate this newly selected task */
     CurrentSp = CurrentP->sp;
-    kernel_OFF();
     task_ON(CurrentPocessIndex);
     Exit_Kernel();
 
@@ -293,6 +283,7 @@ void OS_Init() {
 void OS_Start() {   
   if ( (! KernelActive) && (Tasks > 0)) {
     Disable_Interrupt();
+    interrupt_disable_ON();
     KernelActive = 1;
     Next_Kernel_Request();
   }
@@ -307,6 +298,7 @@ void OS_Start() {
 void Task_Create( voidfuncptr f) {
   if (KernelActive) {
     Disable_Interrupt();
+    interrupt_disable_ON();
     CurrentP->request = CREATE;
     CurrentP->code = f;
     Enter_Kernel();
@@ -322,8 +314,8 @@ void Task_Create( voidfuncptr f) {
 void Task_Next() {
   if (KernelActive) {
     task_OFF(CurrentPocessIndex);
-    kernel_ON();
     Disable_Interrupt();
+    interrupt_disable_ON();
     CurrentP->request = NEXT;
     Enter_Kernel();
   }
@@ -336,6 +328,7 @@ void Task_Next() {
 void Task_Terminate() {
   if (KernelActive) {
     Disable_Interrupt();
+    interrupt_disable_ON();
     CurrentP->request = TERMINATE;
     Enter_Kernel();
     /* never returns here! */
