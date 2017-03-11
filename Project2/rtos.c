@@ -7,7 +7,7 @@
 /**
  * A basic message passing RTOS
  *
- * Authors: Konrad Schultz, Edguardo Cuello
+ * Authors: Konrad Schultz, Edgardo Cuello
  * Date: 6 March 2017
  */
 
