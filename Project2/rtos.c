@@ -26,15 +26,22 @@ void Task_Terminate(void);
 typedef enum process_state { 
   DEAD = 0, 
   READY, 
-  RUNNING 
+  RUNNING,
+  BLOCKED,
 } PROCESS_STATE;
 
 typedef enum kernel_request_type {
   NONE = 0,
   CREATE,
   NEXT,
-  TERMINATE
+  TERMINATE,
 } KERNEL_REQUEST_TYPE;
+
+typedef enum priority {
+  SYSTEM = 0,
+  PERIODIC,
+  ROUND_ROBIN,
+} PRIORITY;
 
 typedef struct ProcessDescriptor {
   unsigned char *sp;  /* stack pointer into the "workSpace" */
@@ -43,6 +50,7 @@ typedef struct ProcessDescriptor {
   voidfuncptr  code;  /* function to be executed as a task */
   KERNEL_REQUEST_TYPE request;
   int arg;
+  PRIORITY priority;
 } PD;
 
 /* This table contains ALL process descriptors. It doesn't matter what */
@@ -60,16 +68,21 @@ volatile unsigned char *KernelSp;
 unsigned char *CurrentSp;
 
 /* index to current task */
-volatile static uint8_t CurrentProcessIndex;  
+volatile static uint8_t CurrentProcessIndex;
 
-/* index to next task to run */
-volatile static unsigned int NextPocessIndex;  
+/** index to next task to run */
+volatile static unsigned int NextPocessIndex;
 
 /* 1 if kernel has been started; 0 otherwise. */
 volatile static unsigned int KernelActive;  
 
 /* number of tasks created so far */
 volatile static unsigned int Tasks;  
+
+/* time in milliseconds - see os.h */
+volatile static unsigned int now; 
+
+
 
 
 /**
@@ -78,11 +91,11 @@ volatile static unsigned int Tasks;
  * can just restore its execution context on its stack.
  * (See file "cswitch.S" for details.)
  */
-void Kernel_Create_Task_At(PD *p, voidfuncptr f, int arg) {
-  unsigned char *sp = (unsigned char *) &(p->workSpace[WORKSPACESIZE-1]);
+void Kernel_Create_Task_At(PD *pd, voidfuncptr f, int arg, PRIORITY p) {
+  unsigned char *sp = (unsigned char *) &(pd->workSpace[WORKSPACESIZE-1]);
 
   /* Clear the contents of the workspace */
-  memset(&(p->workSpace), 0,WORKSPACESIZE);
+  memset(&(pd->workSpace), 0,WORKSPACESIZE);
 
   /** 
    * Notice that we are placing the address of the functions
@@ -104,14 +117,15 @@ void Kernel_Create_Task_At(PD *p, voidfuncptr f, int arg) {
   /* Place stack pointer at top of stack */
   sp = sp - 34;
 
-  p->sp = sp;    /* stack pointer into the "workSpace" */
-  p->code = f;   /* function to be executed as a task */
-  p->request = NONE;
-  p->state = READY;
-  p->arg = arg;
+  pd->sp = sp;    /* stack pointer into the "workSpace" */
+  pd->code = f;   /* function to be executed as a task */
+  pd->request = NONE;
+  pd->state = READY;
+  pd->arg = arg;
+  pd->priority = p;
 }
 
-static void Kernel_Create_Task(voidfuncptr f, int arg) {
+static void Kernel_Create_Task(voidfuncptr f, int arg, PRIORITY p) {
   int x;
 
   if (Tasks == MAXTHREADCOUNT) return;
@@ -122,23 +136,33 @@ static void Kernel_Create_Task(voidfuncptr f, int arg) {
   }
 
   ++Tasks;
-  Kernel_Create_Task_At(&(Process[x]), f, arg);
+  Kernel_Create_Task_At(&(Process[x]), f, arg, p);
 }
 
-extern "C" void Dispatch() {
-  /* 
-   * Find the next READY task
-   * Note: if there is no READY task, then this will loop forever!.
-   */
-  while(Process[NextPocessIndex].state != READY) {
-    NextPocessIndex = (NextPocessIndex + 1) % MAXTHREADCOUNT;
+extern "C" void Dispatch(PROCESS_STATE nextState) {
+  /* Find the next READY SYSTEM task */
+  for (int i = 0; i < MAXTHREADCOUNT; i++) {
+    if (Process[i].state == READY && Process[i].priority == SYSTEM) {
+      CurrentPD->state = nextState;
+      CurrentPD = &(Process[i]);
+      CurrentPD->state = RUNNING;
+      CurrentProcessIndex = i;
+      return;
+    }
   }
 
-  CurrentPD = &(Process[NextPocessIndex]);
-  CurrentPD->state = RUNNING;
-  CurrentProcessIndex = NextPocessIndex;
+  /* TODO periodic tasks, called through ISRs most likely */
 
-  NextPocessIndex = (NextPocessIndex + 1) % MAXTHREADCOUNT;
+  /* Find the next any priority READY task */
+  for (int i = 0; i < MAXTHREADCOUNT; i++) {
+    if (Process[i].state == READY) {
+      CurrentPD->state = nextState;
+      CurrentPD = &(Process[i]);
+      CurrentPD->state = RUNNING;
+      CurrentProcessIndex = i;
+      return;
+    }
+  }
 }
 
 /**
@@ -150,7 +174,7 @@ extern "C" void Dispatch() {
  * This is the main loop of our kernel, called by OS_Start().
  */
 static void Next_Kernel_Request() {
-  Dispatch();
+  Dispatch(READY);
 
   while(1) {
     CurrentPD->request = NONE;
@@ -167,18 +191,16 @@ static void Next_Kernel_Request() {
 
     switch(CurrentPD->request) {
       case CREATE:
-        Kernel_Create_Task(CurrentPD->code, CurrentPD->arg);
+        Kernel_Create_Task(CurrentPD->code, CurrentPD->arg, CurrentPD->priority);
         break;
       case NEXT:
       case NONE:
         /* NONE could be caused by a timer interrupt */
-        CurrentPD->state = READY;
-        Dispatch();
+        Dispatch(READY);
         break;
       case TERMINATE:
         /* deallocate all resources used by this task */
-        CurrentPD->state = DEAD;
-        Dispatch();
+        Dispatch(DEAD);
         break;
       default:
         /* Shouldn't get here */
@@ -192,8 +214,8 @@ void OS_Init() {
 
   Tasks = 0;
   KernelActive = 0;
-  NextPocessIndex = 0;
   CurrentProcessIndex = 0;
+  NextPocessIndex = 0;
 
   for (x = 0; x < MAXTHREADCOUNT; x++) {
     memset(&(Process[x]),0,sizeof(PD));
@@ -220,7 +242,19 @@ void OS_Abort(unsigned int error) {
 }
 
 PID Task_Create_System(voidfuncptr f, int arg) {
-  return 0;
+  if (KernelActive) {
+    Disable_Interrupt();
+    interrupt_disable_ON();
+    CurrentPD->request = CREATE;
+    CurrentPD->code = f;
+    CurrentPD->arg = arg;
+    CurrentPD->priority = SYSTEM;
+    Enter_Kernel();
+  } else { 
+    /* call the RTOS function directly */
+    Kernel_Create_Task(f, arg, SYSTEM);
+  }
+  return Tasks - 1;
 }
 
 PID Task_Create_RR(voidfuncptr f, int arg) {
@@ -230,16 +264,18 @@ PID Task_Create_RR(voidfuncptr f, int arg) {
     CurrentPD->request = CREATE;
     CurrentPD->code = f;
     CurrentPD->arg = arg;
+    CurrentPD->priority = ROUND_ROBIN;
     Enter_Kernel();
   } else { 
     /* call the RTOS function directly */
-    Kernel_Create_Task(f, arg);
+    Kernel_Create_Task(f, arg, ROUND_ROBIN);
   }
-  return 0;
+  return Tasks - 1;
 }
 
 PID Task_Create_Period(voidfuncptr f, int arg, TICK period, TICK wcet, TICK offset) {
-  return 0;
+  /* TODO */
+  return -1;
 }
 
 /**
@@ -260,23 +296,24 @@ int Task_GetArg(void) {
 }
 
 CHAN Chan_Init() {
-  return 0;
+  return -1;
 }
 
 void Send(CHAN ch, int v) {
-  /* do something */
+  /* TODO */
 }
 
 int Recv(CHAN ch) {
-  return 0;
+  /* TODO */
+  return -1;
 }
 
 void Write(CHAN ch, int v) {
-  /* do something */
+  /* TODO */
 }
 
 unsigned int Now() {
-  return 0;
+  return now;
 }
 
 void Task_Terminate() {
@@ -297,7 +334,9 @@ void Ping() {
   init_LED();
   for(;;) {
     if (Task_GetArg() == 1) {
-      enable_LED();
+      if (Now() > 1000) {
+        enable_LED();
+      }
     }
   }
 }
@@ -319,11 +358,11 @@ void setup() {
   TCNT1  = 0;
 
   /* compare match register 16MHz/256/2Hz */
-  OCR1A = 6250;
+  OCR1A = 16000;
   /* CTC mode */
   TCCR1B |= (1 << WGM12);
   /* 256 prescaler */
-  TCCR1B |= (1 << CS12); 
+  TCCR1B |= (1 << CS10); 
   /* enable timer compare interrupt */
   TIMSK1 |= (1 << OCIE1A);
   Enable_Interrupt();
@@ -332,20 +371,33 @@ void setup() {
   init_PINS();
 }
 
-void loop() {
-  asm("");
-}
-
 int main() {
   setup();
   OS_Init();
-  Task_Create_RR(Ping, 1);
-  Task_Create_RR(Pong, 2);
+  PID test1 = Task_Create_System(Ping, 1);
+  if (test1 != 0) {
+    exit(1);
+  }
+
+  PID test2 = Task_Create_System(Ping, 1);
+  if (test2 != 1) {
+    exit(1);
+  }
+
+  PID test3 = Task_Create_RR(Pong, 2);
+  if (test3 != 2) {
+    exit(1);
+  }
+
   OS_Start();
 }
 
-/* f = 100Hz */
-/* T = 10 mS */
+/* f = 1000Hz */
+/* T = 1 mS */
 ISR(TIMER1_COMPA_vect) {
-  Task_Next();
+  now++;
+
+  if (now % 1000 == 0) {
+    Task_Next();
+  }
 }

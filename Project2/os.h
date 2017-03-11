@@ -14,14 +14,13 @@
 #define FALSE 0
 
 
-typedef unsigned int PID;        // always non-zero if it is valid
-typedef unsigned int CHAN;       // always non-zero if it is valid
-typedef unsigned int TICK;       // 1 TICK is defined by MSECPERTICK
-typedef unsigned int BOOL;       // TRUE or FALSE
+typedef unsigned int PID; /* always non-zero if it is valid */
+typedef unsigned int CHAN; /* always non-zero if it is valid */
+typedef unsigned int TICK; /* 1 TICK is defined by MSECPERTICK */
+typedef unsigned int BOOL; /* TRUE or FALSE */
 
 
-// Aborts the RTOS and enters a "non-executing" state with an error code. That is, all tasks
-// will be stopped.
+/* Aborts the RTOS and enters a "non-executing" state with an error code.*/
 void OS_Abort(unsigned int error);
 
 /*
@@ -46,22 +45,21 @@ void OS_Abort(unsigned int error);
 PID Task_Create_System(void (*f)(void), int arg);
 PID Task_Create_RR(void (*f)(void), int arg);
 
- /**
-   * f a parameterless function to be created as a process instance
-   * arg an integer argument to be assigned to this process instanace
-   * period its execution period in multiples of TICKs
-   * wcet its worst-case execution time in TICKs, must be less than "period"
-   * offset its start time in TICKs
-   * returns 0 if not successful; otherwise a non-zero PID.
-   */
-PID   Task_Create_Period(void (*f)(void), int arg, TICK period, TICK wcet, TICK offset);
+ /*
+  * f a parameterless function to be created as a process instance
+  * arg an integer argument to be assigned to this process instanace
+  * period its execution period in multiples of TICKs
+  * wcet its worst-case execution time in TICKs, must be less than "period"
+  * offset its start time in TICKs
+  * returns 0 if not successful; otherwise a non-zero PID.
+  */
+PID Task_Create_Period(void (*f)(void), int arg, TICK period, TICK wcet, TICK offset);
 
-// NOTE: When a task function returns, it terminates automatically!!
+/* When a task function returns, it terminates automatically */
 
 // When a Periodic ask calls Task_Next(), it will resume at the beginning of its next period.
 // When a RR or System task calls Task_Next(), it voluntarily gives up execution and 
 // re-enters the ready state. All RR and Systems tasks are first-come-first-served.
-//   
 void Task_Next(void);
 
 
