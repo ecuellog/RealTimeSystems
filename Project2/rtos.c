@@ -45,7 +45,7 @@ typedef enum priority {
 } PRIORITY;
 
 typedef struct ProcessDescriptor {
-  unsigned char *sp;  /* stack pointer into the "workSpace" */
+  volatile unsigned char *sp;  /* stack pointer into the "workSpace" */
   unsigned char workSpace[WORKSPACESIZE]; 
   PROCESS_STATE state;
   voidfuncptr  code;  /* function to be executed as a task */
@@ -61,7 +61,7 @@ typedef struct ProcessDescriptor {
 /* This table contains ALL process descriptors. It doesn't matter what */
 static PD Process[MAXTHREADCOUNT];
 
-volatile PD* CurrentPD; 
+volatile PD* CurrentPD;
 
 /** 
  * Since this is a "full-served" model, the kernel is executing using its own
@@ -70,7 +70,7 @@ volatile PD* CurrentPD;
  */
 volatile unsigned char *KernelSp;
 
-unsigned char *CurrentSp;
+volatile unsigned char *CurrentSp;
 
 /* index to current task */
 volatile static uint8_t CurrentProcessIndex;
@@ -202,7 +202,11 @@ BOOL find_next_periodic_task(PROCESS_STATE next) {
 }
 
 void Dispatch(PROCESS_STATE next) {
+  volatile PD* PrevPD = CurrentPD;
   if (find_next_task(SYSTEM, next)) {
+    if (PrevPD->priority == PERIODIC) {
+      PrevPD->priority = PREEMPTED;
+    }
     return;
   }
   if (find_next_task(PREEMPTED, next)) {
@@ -457,8 +461,9 @@ int main() {
 
   Task_Create_Period(Pong, 0, 100, 1, 50);
 
-  Task_Create_System(WreckTiming, 2);
+  // Task_Create_System(WreckTiming, 2);
 
+  /* TODO decide if OS should exit with no remaining tasks or loop (register tasks on the go?) */
   Task_Create_RR(Loop, 0);
 
   OS_Start();
@@ -466,7 +471,7 @@ int main() {
 
 
 
-/* don't rely on overflow and % 10 behaviour */
+/* Don't rely on overflow and % 10 behaviour */
 volatile unsigned int counter = 0;
 
 /* f = 1000Hz */
