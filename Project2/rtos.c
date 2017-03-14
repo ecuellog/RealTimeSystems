@@ -35,6 +35,7 @@ typedef enum kernel_request_type {
   CREATE,
   NEXT,
   TERMINATE,
+  BLOCK,
 } KERNEL_REQUEST_TYPE;
 
 typedef enum priority {
@@ -63,6 +64,19 @@ static PD Process[MAXTHREADCOUNT];
 
 volatile PD* CurrentPD;
 
+typedef struct ChannelDescriptor {
+  int value;
+  PID sender;
+  BOOL receivers[MAXTHREADCOUNT];
+  BOOL nextReceivers[MAXTHREADCOUNT];
+} CH;
+
+/* This table contains ALL Channels */
+static CH Channel[MAXCHANNELCOUNT];
+
+/* number of channels created so far */
+volatile static unsigned int channelCount;
+
 /** 
  * Since this is a "full-served" model, the kernel is executing using its own
  * stack. We can allocate a new workspace for this kernel stack, or we can
@@ -73,7 +87,7 @@ volatile unsigned char *KernelSp;
 volatile unsigned char *CurrentSp;
 
 /* index to current task */
-volatile static uint8_t CurrentProcessIndex;
+volatile static unsigned int CurrentProcessIndex;
 
 /* 1 if kernel has been started; 0 otherwise. */
 volatile static unsigned int KernelActive;
@@ -258,6 +272,10 @@ static void Next_Kernel_Request() {
         /* deallocate all resources used by this task */
         Dispatch(DEAD);
         break;
+      case BLOCK:
+        /* called after a channel call blocks */
+        Dispatch(BLOCKED);
+        break;
       default:
         /* Shouldn't get here */
         break;
@@ -274,6 +292,8 @@ void OS_Init() {
     memset(&(Process[x]), 0, sizeof(PD));
     Process[x].state = DEAD;
   }
+
+  memset(&Channel, 0, MAXCHANNELCOUNT * sizeof(CH));
 }
 
 void OS_Start() {   
@@ -308,7 +328,7 @@ PID Task_Create_System(voidfuncptr f, int arg) {
     /* call the RTOS function directly */
     Kernel_Create_Task(f, arg, SYSTEM, -1, -1);
   }
-  return Tasks - 1;
+  return Tasks;
 }
 
 PID Task_Create_RR(voidfuncptr f, int arg) {
@@ -323,7 +343,7 @@ PID Task_Create_RR(voidfuncptr f, int arg) {
     /* call the RTOS function directly */
     Kernel_Create_Task(f, arg, ROUND_ROBIN, -1, -1);
   }
-  return Tasks - 1;
+  return Tasks;
 }
 
 PID Task_Create_Period(voidfuncptr f, int arg, TICK period, TICK wcet, TICK offset) {
@@ -344,7 +364,7 @@ PID Task_Create_Period(voidfuncptr f, int arg, TICK period, TICK wcet, TICK offs
     /* call the RTOS function directly */
     Kernel_Create_Task(f, arg, PERIODIC, offset, period);
   }
-  return Tasks - 1;
+  return Tasks;
 }
 
 /**
@@ -359,11 +379,11 @@ void Task_Next() {
 }
 
 void Tick_Task_Next() {
-if (KernelActive) {
+  if (KernelActive) {
     Disable_Interrupt();
     CurrentPD->request = NONE;
     Enter_Kernel();
-  } 
+  }
 }
 
 int Task_GetArg(void) {
@@ -371,21 +391,106 @@ int Task_GetArg(void) {
 }
 
 CHAN Chan_Init() {
-  /* TODO */
-  return -1;
+  if (channelCount >= MAXCHANNELCOUNT) {
+    return -1;
+  }
+
+  memset(&Channel[channelCount], 0, sizeof(CH));
+
+  return ++channelCount;
+}
+
+BOOL hasReceiver(CHAN ch) {
+  for (int i = 0; i < MAXTHREADCOUNT; i++) {
+    if (Channel[ch - 1].receivers[i] != 0) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+BOOL hasSender(CHAN ch) {
+  return Channel[ch - 1].sender != 0;
+}
+
+void resetChannel(CHAN ch) {
+  memset(&Channel[ch - 1], 0, sizeof(CH));
 }
 
 void Send(CHAN ch, int v) {
-  /* TODO */
+  if (hasSender(ch)) {
+    OS_Abort(1);
+  }
+
+  Channel[ch - 1].sender = CurrentProcessIndex + 1;
+  Channel[ch - 1].value = v;
+  if (hasReceiver(ch)) {
+    for (int i = 0; i < MAXTHREADCOUNT; i++) {
+      if (Channel[ch - 1].receivers[i]){
+        Process[i].state = READY;
+      }
+    }
+  } else {
+    CurrentPD->state = BLOCKED;
+    
+    if (KernelActive) {
+      Disable_Interrupt();
+      CurrentPD->request = BLOCK;
+      Enter_Kernel();
+    }
+  }
 }
 
 int Recv(CHAN ch) {
-  /* TODO */
-  return -1;
+  if (hasSender(ch)) {
+    if (hasReceiver(ch)) {
+      // in process of "receiving"
+      Channel[ch - 1].nextReceivers[CurrentProcessIndex] = TRUE;
+      CurrentPD->state = BLOCKED;
+
+      if (KernelActive) {
+        Disable_Interrupt();
+        CurrentPD->request = BLOCK;
+        Enter_Kernel();
+      }
+    }
+  } else {
+    Channel[ch - 1].receivers[CurrentProcessIndex] = TRUE;
+    CurrentPD->state = BLOCKED;
+
+    if (KernelActive) {
+      Disable_Interrupt();
+      CurrentPD->request = BLOCK;
+      Enter_Kernel();
+    }
+  }
+
+  int value = Channel[ch - 1].value;
+  
+  Channel[ch - 1].receivers[CurrentProcessIndex] = FALSE;
+  if (!hasReceiver(ch)) {
+    Process[Channel[ch - 1].sender - 1].state = READY;
+    Channel[ch - 1].sender = 0;
+    memcpy(Channel[ch - 1].receivers, Channel[ch - 1].nextReceivers, MAXTHREADCOUNT * sizeof(BOOL));
+  }
+
+  return value;
 }
 
 void Write(CHAN ch, int v) {
-  /* TODO */
+  if (hasSender(ch)) {
+    OS_Abort(1);
+  }
+
+  if (hasReceiver(ch)) {
+    Channel[ch - 1].sender = CurrentProcessIndex + 1;
+    Channel[ch - 1].value = v;
+    for (int i = 0; i < MAXTHREADCOUNT; i++) {
+      if (Channel[ch - 1].receivers[i]){
+        Process[i].state = READY;
+      }
+    }
+  }
 }
 
 unsigned int Now() {
@@ -397,32 +502,14 @@ void Task_Terminate() {
     Disable_Interrupt();
     CurrentPD->request = TERMINATE;
     Enter_Kernel();
-    /* never returns here! */
   }
 }
 
 /*
  * Testing functions
  */
-void Ping() {
-  for(;;) {
-    enable_LED();
-    Task_Next();
-  }
-}
 
-void Pong() {
-  for(;;) {
-    disable_LED();
-    Task_Next();
-  }
-}
-
-void Loop() {
-  for(;;) {
-    asm("");
-  }
-}
+CHAN channelA;
 
 /* do nothing for 2 seconds */
 void WreckTiming() {
@@ -430,6 +517,27 @@ void WreckTiming() {
     for (int j = 0; j < 2000; j++) {
       asm("");
     }
+  }
+}
+
+void Ping() {
+  for(;;) {
+    WreckTiming();
+    int result = Recv(channelA);
+    enable_LED();
+  }
+}
+
+void Pong() {
+  for(;;) {
+    Send(channelA, 1);
+    disable_LED();
+  }
+}
+
+void Loop() {
+  for(;;) {
+    asm("");
   }
 }
 
@@ -457,9 +565,10 @@ int main() {
   setup();
   OS_Init();
 
-  Task_Create_Period(Ping, 0, 100, 1, 0);
+  channelA = Chan_Init();
 
-  Task_Create_Period(Pong, 0, 100, 1, 50);
+  Task_Create_System(Ping, 0);
+  Task_Create_System(Pong, 0);
 
   // Task_Create_System(WreckTiming, 2);
 

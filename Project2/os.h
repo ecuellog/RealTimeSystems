@@ -4,7 +4,7 @@
 
 #define MAXTHREADCOUNT 16
 #define WORKSPACESIZE 256
-#define MAXCHAN 16
+#define MAXCHANNELCOUNT 16
 #define MSECPERTICK 10
 
 #ifndef NULL
