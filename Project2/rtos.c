@@ -413,10 +413,6 @@ BOOL hasSender(CHAN ch) {
   return Channel[ch - 1].sender != 0;
 }
 
-void resetChannel(CHAN ch) {
-  memset(&Channel[ch - 1], 0, sizeof(CH));
-}
-
 void Send(CHAN ch, int v) {
   if (hasSender(ch)) {
     OS_Abort(1);
@@ -514,25 +510,34 @@ CHAN channelA;
 /* do nothing for 2 seconds */
 void WreckTiming() {
   for (int i = 0; i < 16000; i++) {
-    for (int j = 0; j < 2000; j++) {
+    for (int j = 0; j < 1000; j++) {
       asm("");
     }
   }
 }
 
 void Ping() {
-  for(;;) {
-    WreckTiming();
-    int result = Recv(channelA);
-    enable_LED();
+  int result = Recv(channelA);
+
+  if (result == 5) {
+    for(;;) {
+      enable_LED();
+    }
   }
 }
 
 void Pong() {
-  for(;;) {
-    Send(channelA, 1);
-    disable_LED();
+  int result = Recv(channelA);
+
+  if (result == 5) {
+    for(;;) {
+      disable_LED();
+    }
   }
+}
+
+void PingPong() {
+  Send(channelA, 5);
 }
 
 void Loop() {
@@ -569,6 +574,7 @@ int main() {
 
   Task_Create_System(Ping, 0);
   Task_Create_System(Pong, 0);
+  Task_Create_RR(PingPong, 0);
 
   // Task_Create_System(WreckTiming, 2);
 
@@ -589,7 +595,7 @@ ISR(TIMER1_COMPA_vect) {
   now++;
 
   counter++;
-  if (counter == MSECPERTICK) {
+  if (counter == 1000) {
     counter = 0;
 
     currentTick++;
