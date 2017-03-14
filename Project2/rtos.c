@@ -1,9 +1,3 @@
-#include <avr/interrupt.h>
-#include <string.h>
-#include <stdlib.h>
-#include "rtosTest.h"
-#include "os.h"
-
 /**
  * A basic message passing RTOS
  *
@@ -11,7 +5,26 @@
  * Date: 6 March 2017
  */
 
-typedef void (*voidfuncptr) (void);
+#include <avr/interrupt.h>
+#include <string.h>
+#include <stdlib.h>
+#include "rtosTest.h"
+#include "os.h"
+
+#define DEBUG 1
+
+#if DEBUG
+  #define MSECPERTICK 1000
+#else
+  #define MSECPERTICK 10
+#endif
+
+#define MAXTHREADCOUNT 16
+#define WORKSPACESIZE 256
+#define MAXCHANNELCOUNT 16
+
+#define TRUE 1
+#define FALSE 0
 
 #define Disable_Interrupt() asm volatile ("cli"::)
 #define Enable_Interrupt() asm volatile ("sei"::)
@@ -595,7 +608,7 @@ ISR(TIMER1_COMPA_vect) {
   now++;
 
   counter++;
-  if (counter == 1000) {
+  if (counter == MSECPERTICK) {
     counter = 0;
 
     currentTick++;

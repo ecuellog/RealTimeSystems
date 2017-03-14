@@ -2,23 +2,11 @@
 #ifndef _OS_H_
 #define _OS_H_
 
-#define MAXTHREADCOUNT 16
-#define WORKSPACESIZE 256
-#define MAXCHANNELCOUNT 16
-#define MSECPERTICK 10
-
-#ifndef NULL
-#define NULL 0 
-#endif
-#define TRUE 1
-#define FALSE 0
-
-
 typedef unsigned int PID; /* always non-zero if it is valid */
 typedef unsigned int CHAN; /* always non-zero if it is valid */
 typedef unsigned int TICK; /* 1 TICK is defined by MSECPERTICK */
 typedef unsigned int BOOL; /* TRUE or FALSE */
-
+typedef void (*voidfuncptr) (void);
 
 /* Aborts the RTOS and enters a "non-executing" state with an error code.*/
 void OS_Abort(unsigned int error);
@@ -42,8 +30,8 @@ void OS_Abort(unsigned int error);
  * or yield.
  */
 
-PID Task_Create_System(void (*f)(void), int arg);
-PID Task_Create_RR(void (*f)(void), int arg);
+PID Task_Create_System(voidfuncptr, int arg);
+PID Task_Create_RR(voidfuncptr, int arg);
 
  /*
   * f a parameterless function to be created as a process instance
@@ -53,7 +41,7 @@ PID Task_Create_RR(void (*f)(void), int arg);
   * offset its start time in TICKs
   * returns 0 if not successful; otherwise a non-zero PID.
   */
-PID Task_Create_Period(void (*f)(void), int arg, TICK period, TICK wcet, TICK offset);
+PID Task_Create_Period(voidfuncptr, int arg, TICK period, TICK wcet, TICK offset);
 
 /* When a task function returns, it terminates automatically */
 
