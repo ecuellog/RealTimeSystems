@@ -559,6 +559,6 @@ unsigned int Now() {
 
 int main() {
   OS_Init();
-  Task_Create_System(a_main, 5);
+  Task_Create_System(a_main, 6);
   OS_Start();
 }
