@@ -96,29 +96,29 @@ PORTC = 0x08; pins 30-37 (high-low)
   pop r0
 .endm
 
-.macro interrupt_disable_OFF
-    push r16
-    in r16, PORTC
-    andi r16, 0xBF; ~(1<<6) pin 31
-    out PORTC, r16
-    pop r16
-.endm
-
-.macro context_switch_ON
-    push r16
-    in r16, PORTC
-    ori r16, 0x80; (1<<7) pin 30
-    out PORTC, r16
-    pop r16
-.endm
-
-.macro context_switch_OFF
-    push r16
-    in r16, PORTC
-    andi r16, 0x7F; ~(1<<7) pin 30
-    out PORTC, r16
-    pop r16
-.endm
+;.macro interrupt_disable_OFF
+;    push r16
+;    in r16, PORTC
+;    andi r16, 0xBF; ~(1<<6) pin 31
+;    out PORTC, r16
+;    pop r16
+;.endm
+;
+;.macro context_switch_ON
+;    push r16
+;    in r16, PORTC
+;    ori r16, 0x80; (1<<7) pin 30
+;    out PORTC, r16
+;    pop r16
+;.endm
+;
+;.macro context_switch_OFF
+;    push r16
+;    in r16, PORTC
+;    andi r16, 0x7F; ~(1<<7) pin 30
+;    out PORTC, r16
+;    pop r16
+;.endm
     
 
 .section .text
@@ -140,7 +140,7 @@ PORTC = 0x08; pins 30-37 (high-low)
 ;
 ; void Exit_Kernel(void)
 Exit_Kernel:
-  context_switch_ON
+  ;context_switch_ON
   SAVECTX
 
   ;Now, we have saved the kernel's context.
@@ -160,8 +160,8 @@ Exit_Kernel:
   ;We are now executing in Cp's stack.
   ;Note: at the bottom of the Cp's context is its return address.
   RESTORECTX
-  context_switch_OFF
-  interrupt_disable_OFF
+  ;context_switch_OFF
+  ;interrupt_disable_OFF
 
   reti
 
@@ -181,7 +181,7 @@ Exit_Kernel:
 Enter_Kernel:   
   ; This is the "bottom" half of CSwitch(). We are still executing in
   ; Cp's context.
-  context_switch_ON
+  ;context_switch_ON
   SAVECTX
 
   ; Now, we have saved the Cp's context.
@@ -200,7 +200,7 @@ Enter_Kernel:
   
   ; We are now executing in kernel's stack.
   RESTORECTX
-  context_switch_OFF
+  ;context_switch_OFF
   
   ; We are ready to return to the caller of CSwitch() (or Exit_Kernel()).
   ; Note: We should NOT re-enable interrupts while kernel is running.

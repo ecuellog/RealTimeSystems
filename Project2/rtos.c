@@ -1,3 +1,5 @@
+void enable_LED(void);
+void disable_LED(void);
 /**
  * A basic message passing RTOS
  *
@@ -11,13 +13,7 @@
 #include "rtosTest.h"
 #include "os.h"
 
-#define DEBUG 1
-
-#if DEBUG
-  #define MSECPERTICK 1000
-#else
-  #define MSECPERTICK 10
-#endif
+#define MSECPERTICK 10
 
 #define MAXTHREADCOUNT 16
 #define WORKSPACESIZE 256
@@ -176,6 +172,12 @@ static void Kernel_Create_Task(voidfuncptr f, int arg, PRIORITY p, TICK t0, TICK
   Kernel_Create_Task_At(&(Process[x]), f, arg, p, t0, T);
 }
 
+void Loop() {
+  for(;;) {
+    asm("");
+  }
+}
+
 BOOL find_next_task(PRIORITY p, PROCESS_STATE next) {
   /* Find the next READY SYSTEM task */
   for (int i = 0; i < MAXTHREADCOUNT; i++) {
@@ -242,7 +244,9 @@ void Dispatch(PROCESS_STATE next) {
   if (find_next_periodic_task(next)) {
     return;
   }
-  find_next_task(ROUND_ROBIN, next);
+  if (find_next_task(ROUND_ROBIN, next)) {
+    return;
+  }
 }
 
 /**
@@ -284,6 +288,7 @@ static void Next_Kernel_Request() {
       case TERMINATE:
         /* deallocate all resources used by this task */
         Dispatch(DEAD);
+        --Tasks;
         break;
       case BLOCK:
         /* called after a channel call blocks */
@@ -294,6 +299,48 @@ static void Next_Kernel_Request() {
         break;
     }
   } 
+}
+
+void setupTimer() {
+  Disable_Interrupt();
+  TCCR1A = 0;
+  TCCR1B = 0;
+  TCNT1  = 0;
+
+  /* compare match register 16MHz/256/2Hz */
+  OCR1A = 16000;
+  /* CTC mode */
+  TCCR1B |= (1 << WGM12);
+  /* 1 prescaler */
+  TCCR1B |= (1 << CS10); 
+  /* enable timer compare interrupt */
+  TIMSK1 |= (1 << OCIE1A);
+  Enable_Interrupt();
+}
+
+void Tick_Task_Next() {
+  if (KernelActive) {
+    Disable_Interrupt();
+    CurrentPD->request = NONE;
+    Enter_Kernel();
+  }
+}
+
+/* Don't rely on overflow and % 10 behaviour */
+volatile unsigned int counter = 0;
+
+/* f = 1000Hz */
+/* T = 1 mS */
+ISR(TIMER1_COMPA_vect) {
+  now++;
+
+  counter++;
+  if (counter == MSECPERTICK) {
+    counter = 0;
+
+    currentTick++;
+    Tick_Task_Next();
+  }
 }
 
 void OS_Init() {
@@ -307,11 +354,16 @@ void OS_Init() {
   }
 
   memset(&Channel, 0, MAXCHANNELCOUNT * sizeof(CH));
+
+
+  // create a background rr loop to fall back on if kernel runs out of tasks
+  Kernel_Create_Task(Loop, 0, ROUND_ROBIN, -1, -1);
 }
 
 void OS_Start() {   
   now = 0;
   currentTick = 0;
+  setupTimer();
 
   if ((!KernelActive) && (Tasks > 0)) {
     Disable_Interrupt();
@@ -320,9 +372,29 @@ void OS_Start() {
   }
 }
 
+void Task_Terminate() {
+  if (KernelActive) {
+    Disable_Interrupt();
+    CurrentPD->request = TERMINATE;
+    Enter_Kernel();
+  }
+}
+
+BOOL hasReceiver(CHAN ch) {
+  for (int i = 0; i < MAXTHREADCOUNT; i++) {
+    if (Channel[ch - 1].receivers[i] != 0) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+BOOL hasSender(CHAN ch) {
+  return Channel[ch - 1].sender != 0;
+}
+
 /*
- * RTOS  API  and Stubs
- *
+ * RTOS  API
  */
 
 void OS_Abort(unsigned int error) {
@@ -391,14 +463,6 @@ void Task_Next() {
   }
 }
 
-void Tick_Task_Next() {
-  if (KernelActive) {
-    Disable_Interrupt();
-    CurrentPD->request = NONE;
-    Enter_Kernel();
-  }
-}
-
 int Task_GetArg(void) {
   return CurrentPD->arg;
 }
@@ -411,19 +475,6 @@ CHAN Chan_Init() {
   memset(&Channel[channelCount], 0, sizeof(CH));
 
   return ++channelCount;
-}
-
-BOOL hasReceiver(CHAN ch) {
-  for (int i = 0; i < MAXTHREADCOUNT; i++) {
-    if (Channel[ch - 1].receivers[i] != 0) {
-      return TRUE;
-    }
-  }
-  return FALSE;
-}
-
-BOOL hasSender(CHAN ch) {
-  return Channel[ch - 1].sender != 0;
 }
 
 void Send(CHAN ch, int v) {
@@ -506,112 +557,8 @@ unsigned int Now() {
   return now;
 }
 
-void Task_Terminate() {
-  if (KernelActive) {
-    Disable_Interrupt();
-    CurrentPD->request = TERMINATE;
-    Enter_Kernel();
-  }
-}
-
-/*
- * Testing functions
- */
-
-CHAN channelA;
-
-/* do nothing for 2 seconds */
-void WreckTiming() {
-  for (int i = 0; i < 16000; i++) {
-    for (int j = 0; j < 1000; j++) {
-      asm("");
-    }
-  }
-}
-
-void Ping() {
-  int result = Recv(channelA);
-
-  if (result == 5) {
-    for(;;) {
-      enable_LED();
-    }
-  }
-}
-
-void Pong() {
-  int result = Recv(channelA);
-
-  if (result == 5) {
-    for(;;) {
-      disable_LED();
-    }
-  }
-}
-
-void PingPong() {
-  Send(channelA, 5);
-}
-
-void Loop() {
-  for(;;) {
-    asm("");
-  }
-}
-
-void setup() {
-  Disable_Interrupt();
-  TCCR1A = 0;
-  TCCR1B = 0;
-  TCNT1  = 0;
-
-  /* compare match register 16MHz/256/2Hz */
-  OCR1A = 16000;
-  /* CTC mode */
-  TCCR1B |= (1 << WGM12);
-  /* 1 prescaler */
-  TCCR1B |= (1 << CS10); 
-  /* enable timer compare interrupt */
-  TIMSK1 |= (1 << OCIE1A);
-  Enable_Interrupt();
-
-  init_LED();
-  init_PINS();
-}
-
 int main() {
-  setup();
   OS_Init();
-
-  channelA = Chan_Init();
-
-  Task_Create_System(Ping, 0);
-  Task_Create_System(Pong, 0);
-  Task_Create_RR(PingPong, 0);
-
-  // Task_Create_System(WreckTiming, 2);
-
-  /* TODO decide if OS should exit with no remaining tasks or loop (register tasks on the go?) */
-  Task_Create_RR(Loop, 0);
-
+  Task_Create_System(a_main, 5);
   OS_Start();
-}
-
-
-
-/* Don't rely on overflow and % 10 behaviour */
-volatile unsigned int counter = 0;
-
-/* f = 1000Hz */
-/* T = 1 mS */
-ISR(TIMER1_COMPA_vect) {
-  now++;
-
-  counter++;
-  if (counter == MSECPERTICK) {
-    counter = 0;
-
-    currentTick++;
-    Tick_Task_Next();
-  }
 }
