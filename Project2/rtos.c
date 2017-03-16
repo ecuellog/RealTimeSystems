@@ -1,5 +1,3 @@
-void enable_LED(void);
-void disable_LED(void);
 /**
  * A basic message passing RTOS
  *
@@ -276,19 +274,14 @@ static void Next_Kernel_Request() {
       case CREATE:
         Kernel_Create_Task(CurrentPD->code, CurrentPD->arg, CurrentPD->priority, CurrentPD->startTime, CurrentPD->period);
         break;
-      case NEXT:
-        /* voluntary yield of current process */
-        Dispatch(READY);
-        break;
-      case NONE:
-        /* next tick, possible for same task to be rescheduled */
+      case NEXT: /* voluntary yield of current process */
+      case NONE: /* next tick, possible for same task to be rescheduled */
         CurrentPD->state = READY;
         Dispatch(READY);
         break;
       case TERMINATE:
         /* deallocate all resources used by this task */
         Dispatch(DEAD);
-        --Tasks;
         break;
       case BLOCK:
         /* called after a channel call blocks */
@@ -559,6 +552,6 @@ unsigned int Now() {
 
 int main() {
   OS_Init();
-  Task_Create_System(a_main, 5);
+  Task_Create_System(a_main, 15);
   OS_Start();
 }
