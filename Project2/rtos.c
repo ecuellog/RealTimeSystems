@@ -13,7 +13,7 @@
 
 #define MSECPERTICK 10
 
-#define MAXTHREADCOUNT 16
+#define MAXTHREADCOUNT 18 // 16 + main sys task + rr background loop
 #define WORKSPACESIZE 256
 #define MAXCHANNELCOUNT 16
 
@@ -107,7 +107,30 @@ volatile static unsigned int now;
 volatile static TICK currentTick;
 
 
+/* PERFORMANCE INDICATORS */
+void init_PINS() {
+  DDRC = 0xFF; // Set it all to output
+}
 
+void dispatch_overhead_ON() {
+  PORTC |= (1 << 6); // 0x40 pin 31
+}
+
+void dispatch_overhead_OFF() {
+  PORTC &= ~(1 << 6); // 0xBF  pin 31
+}
+
+/* 
+ *  We defined channel overhead as the time difference between when
+ *  channels begin to receive a value and all the channels have received it.
+ */
+void channel_overhead_ON() {
+  PORTC |= (1 << 5); // pin 32
+}
+
+void channel_overhead_OFF() {
+  PORTC &= ~(1 << 5); // pin 32
+}
 
 /**
  * When creating a new task, it is important to initialize its stack just like
@@ -159,11 +182,14 @@ void Kernel_Create_Task_At(PD *pd, voidfuncptr f, int arg, PRIORITY p, TICK t0, 
 static void Kernel_Create_Task(voidfuncptr f, int arg, PRIORITY p, TICK t0, TICK T) {
   int x;
 
-  if (Tasks == MAXTHREADCOUNT) return;
-
   /* find a DEAD PD that we can use  */
   for (x = 0; x < MAXTHREADCOUNT; x++) {
      if (Process[x].state == DEAD) break;
+  }
+
+  // could not find DEAD PD
+  if (x == MAXTHREADCOUNT) {
+    return;
   }
 
   ++Tasks;
@@ -229,20 +255,25 @@ BOOL find_next_periodic_task(PROCESS_STATE next) {
 }
 
 void Dispatch(PROCESS_STATE next) {
+  dispatch_overhead_ON();
   volatile PD* PrevPD = CurrentPD;
   if (find_next_task(SYSTEM, next)) {
     if (PrevPD->priority == PERIODIC) {
       PrevPD->priority = PREEMPTED;
     }
+    dispatch_overhead_OFF();
     return;
   }
   if (find_next_task(PREEMPTED, next)) {
+    dispatch_overhead_OFF();
     return;
   }
   if (find_next_periodic_task(next)) {
+    dispatch_overhead_OFF();
     return;
   }
   if (find_next_task(ROUND_ROBIN, next)) {
+    dispatch_overhead_OFF();
     return;
   }
 }
@@ -518,6 +549,7 @@ int Recv(CHAN ch) {
     }
   }
 
+  channel_overhead_ON();
   int value = Channel[ch - 1].value;
   
   Channel[ch - 1].receivers[CurrentProcessIndex] = FALSE;
@@ -525,6 +557,7 @@ int Recv(CHAN ch) {
     Process[Channel[ch - 1].sender - 1].state = READY;
     Channel[ch - 1].sender = 0;
     memcpy(Channel[ch - 1].receivers, Channel[ch - 1].nextReceivers, MAXTHREADCOUNT * sizeof(BOOL));
+    channel_overhead_OFF();
   }
 
   return value;
@@ -551,7 +584,8 @@ unsigned int Now() {
 }
 
 int main() {
+  init_PINS();
   OS_Init();
-  Task_Create_System(a_main, 15);
+  Task_Create_System(a_main, 17);
   OS_Start();
 }

@@ -1,10 +1,11 @@
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <string.h>
 #include "os.h"
 
-#define NUMLOGS 10
-int trace[NUMLOGS] = { 0 };
-int curTraceIndex = 0;
+#define NUMLOGS 20
+volatile int trace[NUMLOGS] = { 0 };
+volatile int curTraceIndex = 0;
 
 void init_LED() {
   DDRB = 0xFF;  // Set it all to output
@@ -24,6 +25,7 @@ void toggle_LED() {
 
 int expectedTrace[NUMLOGS] = { 0 };
 void compare_traces() {
+  //enable_LED();
   for (int i = 0; i < NUMLOGS; i++) {
     if (expectedTrace[i] != trace[i]) {
       disable_LED();
@@ -37,7 +39,7 @@ void compare_traces() {
 void traceArg() {
   // identify tasks by argument
   trace[curTraceIndex++] = Task_GetArg();
-  if (curTraceIndex == 10) {
+  if (curTraceIndex == NUMLOGS) {
     compare_traces();
   }
 }
@@ -69,7 +71,9 @@ void PeriodicPong() {
 
 void PeriodicTrace() {
   for(;;) {
+    cli();
     traceArg();
+    sei();
     Task_Next();
   }
 }
@@ -138,6 +142,12 @@ void RecvSendTrace() {
     Recv(channel);
     Send(channel, 0);
   }
+}
+
+volatile int currentArg = 1;
+void CreateTask() {
+  traceArg();
+  Task_Create_RR(CreateTask, currentArg++);
 }
 
 /* 0: RR task will run after and enable LED */
@@ -217,7 +227,7 @@ void test_synchronize_multicast() {
 
 /* 6: test that periodic tasks are scheduled properly*/
 void test_period_order() {
-  int e[NUMLOGS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1 };
+  int e[NUMLOGS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
   memcpy(expectedTrace, e, NUMLOGS * sizeof(int));
 
   Task_Create_Period(PeriodicTrace, 3, 100, 1, 60);
@@ -228,7 +238,7 @@ void test_period_order() {
 
 /* 7: test that round robin tasks are scheduled properly*/
 void test_RR_order() {
-  int e[NUMLOGS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1 };
+  int e[NUMLOGS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
   memcpy(expectedTrace, e, NUMLOGS * sizeof(int));
 
   Task_Create_RR(PeriodicTrace, 0);
@@ -239,7 +249,7 @@ void test_RR_order() {
 
 /* 8: test that system tasks are scheduled properly*/
 void test_System_order() {
-  int e[NUMLOGS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1 };
+  int e[NUMLOGS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
   memcpy(expectedTrace, e, NUMLOGS * sizeof(int));
 
   Task_Create_System(PeriodicTrace, 0);
@@ -250,7 +260,7 @@ void test_System_order() {
 
 /* 9: test that system tasks are scheduled ahead of RR */
 void test_RR_starved() {
-  int e[NUMLOGS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+  int e[NUMLOGS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
   memcpy(expectedTrace, e, NUMLOGS * sizeof(int));
 
   Task_Create_RR(PeriodicTrace, 1);
@@ -259,7 +269,7 @@ void test_RR_starved() {
 
 /* 10: test that RR tasks are scheduled behind periodic */
 void test_RR_interleaved() {
-  int e[NUMLOGS] = { 0, 1, 2, 3, 1, 2, 3, 1, 2, 3 };
+  int e[NUMLOGS] = { 0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1 };
   memcpy(expectedTrace, e, NUMLOGS * sizeof(int));
 
   Task_Create_RR(PeriodicTrace, 1);
@@ -270,22 +280,52 @@ void test_RR_interleaved() {
 
 /* 15: test that two tasks can synchronize repeatedly */
 void test_repeated_synchronization() {
-  int e[NUMLOGS] = { 0, 1, 0, 1, 0, 1, 0, 1, 0, 1 };
+  int e[NUMLOGS] = { 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1  };
   memcpy(expectedTrace, e, NUMLOGS * sizeof(int));
 
   Task_Create_RR(SendRecvTrace, 0);
   Task_Create_RR(RecvSendTrace, 1);
 }
 
-/* TODO testcases */
-/* test all task types at once. */
-/* try to create too many tasks should be no-op. */
-/* inifinite task creation as long as always below limit. */
+/* 16: test that additional tasks after max are a no-op */
+void test_excess_tasks() {
+  int e[NUMLOGS] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1, 2, 3, 4  };
+  memcpy(expectedTrace, e, NUMLOGS * sizeof(int));
 
-/* PERFORMANCE TESTS */
-/* context switching overhead */
-/* dispatch overhead */
-/* channel overhead */
+  Task_Create_RR(PeriodicTrace, 1);
+  Task_Create_RR(PeriodicTrace, 2);
+  Task_Create_RR(PeriodicTrace, 3);
+  Task_Create_RR(PeriodicTrace, 4);
+  Task_Create_RR(PeriodicTrace, 5);
+  Task_Create_RR(PeriodicTrace, 6);
+  Task_Create_RR(PeriodicTrace, 7);
+  Task_Create_RR(PeriodicTrace, 8);
+  Task_Create_RR(PeriodicTrace, 9);
+  Task_Create_RR(PeriodicTrace, 10);
+  Task_Create_RR(PeriodicTrace, 11);
+  Task_Create_RR(PeriodicTrace, 12);
+  Task_Create_RR(PeriodicTrace, 13);
+  Task_Create_RR(PeriodicTrace, 14);
+  Task_Create_RR(PeriodicTrace, 15);
+  Task_Create_RR(PeriodicTrace, 16);
+  Task_Create_RR(PeriodicTrace, 17);
+  Task_Create_RR(PeriodicTrace, 18);
+  Task_Create_RR(PeriodicTrace, 19);
+  Task_Create_RR(PeriodicTrace, 20);
+  Task_Create_RR(PeriodicTrace, 21);
+  Task_Create_RR(PeriodicTrace, 22);
+  Task_Create_RR(PeriodicTrace, 23);
+  Task_Create_RR(PeriodicTrace, 24);
+  Task_Create_RR(PeriodicTrace, 25);
+}
+
+/* 17: create a task that creates a task and exits */
+void test_infinite_tasks() {
+  int e[NUMLOGS] = { 17, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
+  memcpy(expectedTrace, e, NUMLOGS * sizeof(int));
+
+  CreateTask();
+}
 
 void a_main() {
   init_LED();
@@ -341,6 +381,12 @@ void a_main() {
     break;
   case 15:
     test_repeated_synchronization();
+    break;
+  case 16:
+    test_excess_tasks();
+    break;
+  case 17:
+    test_infinite_tasks();
     break;
   default: break;
   }
