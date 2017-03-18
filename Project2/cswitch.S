@@ -152,7 +152,6 @@ Exit_Kernel:
   ;Note: at the bottom of the Cp's context is its return address.
   RESTORECTX
   context_switch_OFF
-  dispatch_overhead_OFF
 
   reti
 

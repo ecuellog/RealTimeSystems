@@ -379,7 +379,6 @@ void OS_Init() {
 
   memset(&Channel, 0, MAXCHANNELCOUNT * sizeof(CH));
 
-
   // create a background rr loop to fall back on if kernel runs out of tasks
   Kernel_Create_Task(Loop, 0, ROUND_ROBIN, -1, -1);
 }
@@ -586,6 +585,6 @@ unsigned int Now() {
 int main() {
   init_PINS();
   OS_Init();
-  Task_Create_System(a_main, 17);
+  Task_Create_System(a_main, 14);
   OS_Start();
 }
