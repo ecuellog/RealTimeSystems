@@ -585,6 +585,6 @@ unsigned int Now() {
 int main() {
   init_PINS();
   OS_Init();
-  Task_Create_System(a_main, 14);
+  Task_Create_System(a_main, 9);
   OS_Start();
 }
