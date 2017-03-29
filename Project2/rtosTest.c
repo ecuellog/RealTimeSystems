@@ -69,16 +69,19 @@ void PeriodicPong() {
   }
 }
 
+CHAN channel;
+
 void PeriodicTrace() {
-  for(;;) {
-    cli();
-    traceArg();
-    sei();
-    Task_Next();
+  int val = Recv(channel);
+  if (val == 0) {
+    for(;;) {
+      // cli();
+      // traceArg();
+      // sei();
+      Task_Next();
+    }
   }
 }
-
-CHAN channel;
 
 void SendON() {
   enable_LED();
@@ -263,8 +266,11 @@ void test_RR_starved() {
   int e[NUMLOGS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
   memcpy(expectedTrace, e, NUMLOGS * sizeof(int));
 
-  Task_Create_RR(PeriodicTrace, 1);
+  Task_Create_RR(enable_LED, 1);
   Task_Create_System(PeriodicTrace, 0);
+  Task_Create_System(PeriodicTrace, 0);
+  Task_Create_System(PeriodicTrace, 0);
+  Send(channel, 0);
 }
 
 /* 10: test that RR tasks are scheduled behind periodic */
@@ -327,67 +333,67 @@ void test_infinite_tasks() {
   CreateTask();
 }
 
-void a_main() {
-  init_LED();
+// void a_main() {
+//   init_LED();
 
-  channel = Chan_Init();
+//   channel = Chan_Init();
 
-  /* use argument value for test case */
-  switch(Task_GetArg()) {
-  case 0: 
-    test_system_priority_led_ON(); 
-    break;
-  case 1: 
-    test_system_priority_led_OFF(); 
-    break;
-  case 2: 
-    test_many_system_priority_led_ON(); 
-    break;
-  case 3: 
-    test_basic_period();
-    break;
-  case 4: 
-    test_initial_timing_violation();
-    break;
-  case 5: 
-    test_in_progress_timing_violation();
-    break;
-  case 6:
-    test_period_order();
-    break;
-  case 7:
-    test_RR_order();
-    break;
-  case 8:
-    test_System_order();
-    break;
-  case 9:
-    test_RR_starved();
-    break;
-  case 10:
-    test_RR_interleaved();
-    break;
-  case 11:
-    test_block_on_send();
-    break;
-  case 12:
-    test_block_on_recv();
-    break;
-  case 13:
-    test_no_block_on_write();
-    break;
-  case 14:
-    test_synchronize_multicast();
-    break;
-  case 15:
-    test_repeated_synchronization();
-    break;
-  case 16:
-    test_excess_tasks();
-    break;
-  case 17:
-    test_infinite_tasks();
-    break;
-  default: break;
-  }
-}
+//   /* use argument value for test case */
+//   switch(Task_GetArg()) {
+//   case 0: 
+//     test_system_priority_led_ON(); 
+//     break;
+//   case 1: 
+//     test_system_priority_led_OFF(); 
+//     break;
+//   case 2: 
+//     test_many_system_priority_led_ON(); 
+//     break;
+//   case 3: 
+//     test_basic_period();
+//     break;
+//   case 4: 
+//     test_initial_timing_violation();
+//     break;
+//   case 5: 
+//     test_in_progress_timing_violation();
+//     break;
+//   case 6:
+//     test_period_order();
+//     break;
+//   case 7:
+//     test_RR_order();
+//     break;
+//   case 8:
+//     test_System_order();
+//     break;
+//   case 9:
+//     test_RR_starved();
+//     break;
+//   case 10:
+//     test_RR_interleaved();
+//     break;
+//   case 11:
+//     test_block_on_send();
+//     break;
+//   case 12:
+//     test_block_on_recv();
+//     break;
+//   case 13:
+//     test_no_block_on_write();
+//     break;
+//   case 14:
+//     test_synchronize_multicast();
+//     break;
+//   case 15:
+//     test_repeated_synchronization();
+//     break;
+//   case 16:
+//     test_excess_tasks();
+//     break;
+//   case 17:
+//     test_infinite_tasks();
+//     break;
+//   default: break;
+//   }
+// }
