@@ -31,3 +31,30 @@ uint16_t readAdc(uint8_t pin) {
 
   return ADCW;
 }
+
+void initButton() {
+  DDRB &= ~(1 << 1);
+}
+
+uint8_t readButton() {
+  return PINB & (1 << 1);
+}
+
+void initBluetooth() {
+    // Set baud rate to 19.2k
+    UBRR1 = 103;
+    
+    // Enable receiver, transmitter
+    UCSR1B = (1 << RXEN1) | (1 << TXEN1);
+
+    // 8-bit data
+    UCSR1C = ((1 << UCSZ11) | (1 << UCSZ10));
+
+    // disable 2x speed
+    UCSR1A &= ~(1 << U2X1);
+}
+
+void sendBluetooth(uint8_t data){      
+    while(!(UCSR1A & (1 << UDRE1)));
+    UDR1 = data;
+}
