@@ -22,23 +22,7 @@ void readButtonTask() {
   b = readButton();
 }
 
-int main() {
+void a_main() {
   initLed();
-  initAdc();
-  initButton();
-  initBluetooth();
-
-  for(;;) {
-    // readJsServoTask();
-    // readJsRoomba();
-    // readButtonTask();
-    sendBluetooth(1);
-    if(b == 0) {
-      enableLed();
-    } else {
-      disableLed();
-    }
-  }
-
-  return 0;
+  enableLed();
 }
