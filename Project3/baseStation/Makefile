@@ -22,7 +22,7 @@ HEADERS = $(wildcard *.h)
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(OFLAGS) $(OBJECTS) -o $@
+	$(CC) $(OFLAGS) $(OBJECTS) cswitch.o -o $@
 	$(COPY) $(HEXFLAGS) $(TARGET) $(TARGET)
 
 flash:
