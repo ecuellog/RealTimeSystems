@@ -1,7 +1,7 @@
 TARGET = prog.hex
 CC = avr-g++
 COPY = avr-objcopy
-CFLAGS = -Os -DF_CPU=16000000 -mmcu=atmega2560
+CFLAGS = -Os -DF_CPU=16000000 -mmcu=atmega2560 -IArduino
 OFLAGS = -DF_CPU=16000000 -mmcu=atmega2560
 HEXFLAGS = -O ihex 
 
@@ -9,9 +9,6 @@ HEXFLAGS = -O ihex
 
 default: $(TARGET)
 all: default
-
-cswitch:
-	$(CC) -c -O2 -mmcu=atmega2560 -Wa,--gstabs -o cswitch.o cswitch.S
 
 OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c)) $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 HEADERS = $(wildcard *.h)
@@ -22,7 +19,7 @@ HEADERS = $(wildcard *.h)
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(OFLAGS) $(OBJECTS) cswitch.o -o $@
+	$(CC) $(OFLAGS) $(OBJECTS) Arduino/*.o -o $@
 	$(COPY) $(HEXFLAGS) $(TARGET) $(TARGET)
 
 flash:
