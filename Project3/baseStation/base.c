@@ -3,6 +3,7 @@
  * Authors: Konrad Schultz, Edgardo Cuello
  */
 
+#include <util/delay.h>
 #include "../common/os.h"
 #include "../common/utility.h"
 #include "baseUtility.h"
@@ -64,7 +65,7 @@ void initialize() {
 
 void a_main() {
   Task_Create_System(initialize, 0);
-  Task_Create_Period(readJsRoombaTask, 0, 10, 1, 0);
-  Task_Create_Period(readJsServoTask, 0, 10, 1, 1);
-  Task_Create_Period(readButtonTask, 0, 10, 1, 2);
+  // Task_Create_Period(readJsRoombaTask, 0, 10, 1, 0);
+  // Task_Create_Period(readJsServoTask, 0, 10, 1, 1);
+  // Task_Create_Period(readButtonTask, 0, 10, 1, 2);
 }
