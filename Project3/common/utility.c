@@ -1,7 +1,7 @@
 #include "utility.h"
 
 void initLed() {
-  DDRB |= 1 << 7;  // Set it all to output
+  DDRB |= 1 << 7;
 }
 
 void enableLed() {
