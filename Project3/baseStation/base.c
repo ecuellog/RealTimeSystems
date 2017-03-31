@@ -3,14 +3,9 @@
  * Authors: Konrad Schultz, Edgardo Cuello
  */
 
-#include "utility.h"
-#include "os.h"
-
-typedef enum commands { 
-  ROOMBA = 0, 
-  SERVO, 
-  LASER,
-} COMMANDS;
+#include "../common/os.h"
+#include "../common/utility.h"
+#include "baseUtility.h"
 
 void readJsRoombaTask() {
   uint16_t rx, ry; // value between 0-1024

@@ -1,15 +1,16 @@
 #include <avr/io.h>
 
+typedef enum commands { 
+  ROOMBA = 0, 
+  SERVO, 
+  LASER,
+} COMMANDS;
+
 void initLed();
 void enableLed();
 void disableLed();
 void toggleLed();
 
-void initAdc();
-uint16_t readAdc(uint8_t pin);
-
-void initButton();
-uint8_t readButton();
-
 void initBluetooth();
 void sendBluetooth(uint8_t data);
+uint8_t receiveBluetooth();

@@ -16,30 +16,6 @@ void toggleLed() {
   PORTB ^= 1 << 7;
 }
 
-void initAdc() {
-  ADMUX |= 1 << REFS0;
-  ADCSRA |= (1 << ADEN) | (1 << ADPS0) | (1 << ADPS1) | (1 << ADPS2); // prescaler 128
-}
-
-uint16_t readAdc(uint8_t pin) {
-  ADMUX &= 0xE0;
-  ADMUX |= pin & 0x07;
-  ADCSRB = pin & (1 << 3);
-  ADCSRA |= 1 << ADSC;
-  
-  while(ADCSRA & (1 << ADSC));
-
-  return ADCW;
-}
-
-void initButton() {
-  DDRB &= ~(1 << 1);
-}
-
-uint8_t readButton() {
-  return PINB & (1 << 1);
-}
-
 void initBluetooth() {
     // Set baud rate to 19.2k
     UBRR1 = 103;
@@ -54,7 +30,12 @@ void initBluetooth() {
     UCSR1A &= ~(1 << U2X1);
 }
 
-void sendBluetooth(uint8_t data){      
+void sendBluetooth(uint8_t data) {      
     while(!(UCSR1A & (1 << UDRE1)));
     UDR1 = data;
+}
+
+uint8_t receiveBluetooth() {      
+    while(!(UCSR1A & (1 << RXC1)));
+    return UDR1;
 }

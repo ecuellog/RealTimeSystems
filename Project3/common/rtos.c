@@ -8,7 +8,6 @@
 #include <avr/interrupt.h>
 #include <string.h>
 #include <stdlib.h>
-#include "base.h"
 #include "os.h"
 
 #define MSECPERTICK 10
@@ -25,8 +24,9 @@
 
 /* This internal kernel function is the context switching mechanism (see switch.S) */
 extern void CSwitch();
-extern "C" void Exit_Kernel();
-extern "C" void Enter_Kernel();
+extern void Exit_Kernel();
+extern void Enter_Kernel();
+extern void a_main();
 
 void Task_Terminate(void);
 
@@ -204,7 +204,8 @@ void Loop() {
 
 BOOL find_next_task(PRIORITY p, PROCESS_STATE next) {
   /* Find the next READY SYSTEM task */
-  for (int i = 0; i < MAXTHREADCOUNT; i++) {
+  int i;
+  for (i = 0; i < MAXTHREADCOUNT; i++) {
     int j = (CurrentProcessIndex + i + 1) % MAXTHREADCOUNT;
     if (Process[j].state == READY && Process[j].priority == p) {
       CurrentPD->state = next;
@@ -221,7 +222,8 @@ BOOL find_next_task(PRIORITY p, PROCESS_STATE next) {
 volatile unsigned int countTest = 0;
 BOOL find_next_periodic_task(PROCESS_STATE next) {
   /* Find the next READY periodic task */
-  for (int i = 0; i < MAXTHREADCOUNT; i++) {
+  int i;
+  for (i = 0; i < MAXTHREADCOUNT; i++) {
     if (Process[i].state == READY && Process[i].priority == PERIODIC) {
       if (Process[i].firstRun) {
         if (currentTick > Process[i].startTime) {
@@ -372,7 +374,8 @@ void OS_Init() {
   KernelActive = 0;
   CurrentProcessIndex = 0;
 
-  for (int x = 0; x < MAXTHREADCOUNT; x++) {
+  int x;
+  for (x = 0; x < MAXTHREADCOUNT; x++) {
     memset(&(Process[x]), 0, sizeof(PD));
     Process[x].state = DEAD;
   }
@@ -404,7 +407,8 @@ void Task_Terminate() {
 }
 
 BOOL hasReceiver(CHAN ch) {
-  for (int i = 0; i < MAXTHREADCOUNT; i++) {
+  int i;
+  for (i = 0; i < MAXTHREADCOUNT; i++) {
     if (Channel[ch - 1].receivers[i] != 0) {
       return TRUE;
     }
@@ -508,7 +512,8 @@ void Send(CHAN ch, int v) {
   Channel[ch - 1].sender = CurrentProcessIndex + 1;
   Channel[ch - 1].value = v;
   if (hasReceiver(ch)) {
-    for (int i = 0; i < MAXTHREADCOUNT; i++) {
+    int i;
+    for (i = 0; i < MAXTHREADCOUNT; i++) {
       if (Channel[ch - 1].receivers[i]){
         Process[i].state = READY;
       }
@@ -570,7 +575,8 @@ void Write(CHAN ch, int v) {
   if (hasReceiver(ch)) {
     Channel[ch - 1].sender = CurrentProcessIndex + 1;
     Channel[ch - 1].value = v;
-    for (int i = 0; i < MAXTHREADCOUNT; i++) {
+    int i;
+    for (i = 0; i < MAXTHREADCOUNT; i++) {
       if (Channel[ch - 1].receivers[i]){
         Process[i].state = READY;
       }
