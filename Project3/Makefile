@@ -13,7 +13,7 @@ base: $(BASEOBJECTS)
 	$(FLASH) $(FLASHFLAGS)$(BASETARGET)
 
 ROOMBATARGET = roomba.hex
-ROOMBAOBJECTS = common/cswitch.S common/rtos.c common/utility.c roombaStation/roomba.c roombaStation/roombaUtility.c roombaStation/roombaMotion.c
+ROOMBAOBJECTS = common/cswitch.S common/rtos.c common/utility.c roombaStation/roomba.c roombaStation/roombaUtility.c
 roomba: $(ROOMBAOBJECTS)
 	$(CC) $(OFLAGS) $(ROOMBAOBJECTS) -o $(ROOMBATARGET)
 	$(COPY) $(HEXFLAGS) $(ROOMBATARGET) $(ROOMBATARGET)
