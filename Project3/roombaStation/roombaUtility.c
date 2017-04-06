@@ -76,7 +76,7 @@ void queryRoomba() {
   sendRoomba(QUERYLIST);
   sendRoomba(2);
   sendRoomba(BUMPPACKET);
-  sendRoomba(IRPACKET);
+  sendRoomba(WALLPACKET);
 }
 
 void moveRoomba(int rawSpeed, int rawRadius) {

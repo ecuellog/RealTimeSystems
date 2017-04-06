@@ -6,7 +6,7 @@
 #define DRIVE 137
 #define QUERYLIST 149
 #define BUMPPACKET 7
-#define IRPACKET 13
+#define WALLPACKET 13
 
 void initLaser();
 void enableLaser();
