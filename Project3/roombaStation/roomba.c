@@ -80,9 +80,9 @@ void checkRoombaTask() {
     uint8_t bumpState = receiveRoomba();
 
     // 0 = no virtual wall detected, 1 = virtual wall detected
-    uint8_t irState = receiveRoomba();
+    uint8_t irWallState = receiveRoomba();
 
-    if (bumpState || irState) {
+    if (bumpState || irWallState) {
       // drive opposite current direction
       moveRoomba(-speed, -rad);
       _delay_ms(250);
