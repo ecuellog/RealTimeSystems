@@ -72,6 +72,13 @@ uint8_t receiveRoomba() {
   return UDR3;
 }
 
+void queryRoomba() {
+  sendRoomba(QUERYLIST);
+  sendRoomba(2);
+  sendRoomba(BUMPPACKET);
+  sendRoomba(IRPACKET);
+}
+
 void moveRoomba(int rawSpeed, int rawRadius) {
   rawSpeed = -(rawSpeed - 512);
   int actRad;

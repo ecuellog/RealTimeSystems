@@ -7,6 +7,9 @@
 #include "../common/utility.h"
 #include "roombaUtility.h"
 
+
+int speed;
+int rad;
 void checkBluetoothTask() {
   /* Servo */
   uint8_t joyXhigh;
@@ -21,8 +24,6 @@ void checkBluetoothTask() {
   uint8_t speedLow;
   uint8_t radHigh;
   uint8_t radLow;
-  int speed;
-  int rad;
   
   for(;;) {
     /* consume until flag */
@@ -61,6 +62,9 @@ void checkBluetoothTask() {
       break;
     default: break;
     }
+
+    // yield to the roomba check
+    Task_Next();
   }
 }
 
@@ -68,7 +72,26 @@ void checkBluetoothTask() {
  * Check Roomba sensors. If a sensor is triggered, create a system task so that it 
  * overrides any roomba movement and move the roomba accordingly.
  */
-void checkRoombaTask() { }
+void checkRoombaTask() {
+  for(;;) {
+    queryRoomba();
+
+    // 0 = no bump, 1 = bump
+    uint8_t bumpState = receiveRoomba();
+
+    // 0 = no virtual wall detected, 1 = virtual wall detected
+    uint8_t irState = receiveRoomba();
+
+    if (bumpState || irState) {
+      // drive opposite current direction
+      moveRoomba(-speed, -rad);
+      _delay_ms(250);
+    }
+
+    // yield to bluetooth check
+    Task_Next();
+  }
+}
 
 void initialize() {
   initLed();
@@ -81,4 +104,5 @@ void initialize() {
 void a_main() {
   Task_Create_System(initialize, 0);
   Task_Create_System(checkBluetoothTask, 0);
+  Task_Create_System(checkRoombaTask, 0);
 }
